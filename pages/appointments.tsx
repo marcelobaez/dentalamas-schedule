@@ -77,6 +77,8 @@ const SelectItem = forwardRef<HTMLDivElement, ItemProps>(
   ),
 );
 
+SelectItem.displayName = "SelectItem";
+
 export default function Appointments({
   appointments,
   treatments,
