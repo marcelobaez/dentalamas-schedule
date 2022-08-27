@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
+import { useAtom } from 'jotai';
 import {
   AppShell,
   Navbar,
@@ -11,16 +12,18 @@ import {
   MediaQuery,
   Burger,
   Text,
-  Container
+  Container,
+  ActionIcon,
 } from '@mantine/core';
 import Logo from './Logo';
-import { IconLogout } from '@tabler/icons';
+import { IconLogout, IconMoonStars, IconSun } from '@tabler/icons';
 import MainNavLinks from './MainNavLinks';
 import Link from 'next/link';
-import { supabaseClient} from '@supabase/auth-helpers-nextjs';
+import { supabaseClient } from '@supabase/auth-helpers-nextjs';
 import { useUser } from '@supabase/auth-helpers-react';
 import { User } from './User';
 import { useMediaQuery } from '@mantine/hooks';
+import { menuAtom } from '../../atoms/menu';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -48,21 +51,23 @@ const useStyles = createStyles((theme, _params, getRef) => {
 });
 
 export default function AppShellLayout({ children }: AppLayoutProps) {
-  const theme = useMantineTheme();
-  const [opened, setOpened] = useState(false);
-  // const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  // const theme = useMantineTheme();
+  const [opened, setOpened] = useAtom(menuAtom);
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const { classes, cx } = useStyles();
-  const matches = useMediaQuery('(min-width: 768px)', true, { getInitialValueInEffect: false });
-
-  console.log(matches)
+  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
 
   const { user } = useUser();
   const [profile, setData] = useState();
 
   useEffect(() => {
     async function loadData() {
-      const { data: profileData, error } = await supabaseClient.from('profiles').select('avatar_url, username, email').eq('id', user!.id).single();
-      if (error) console.log(error)
+      const { data: profileData, error } = await supabaseClient
+        .from('profiles')
+        .select('avatar_url, username, email')
+        .eq('id', user!.id)
+        .single();
+      if (error) console.log(error);
       if (!error) setData(profileData);
     }
     // Only run query once user is logged in.
@@ -77,47 +82,38 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
           <Navbar.Section grow>
             <MainNavLinks />
           </Navbar.Section>
-          <Navbar.Section>
-            {
-              profile && <User profile={profile}/>
-            }
-          </Navbar.Section>
+          <Navbar.Section>{profile && <User profile={profile} />}</Navbar.Section>
           <Navbar.Section className={classes.footer}>
             <Link href="/api/auth/logout" passHref>
-              <NavLink
-                icon={<IconLogout />}
-                component="a"
-                label="Cerrar sesion"
-              />
+              <NavLink icon={<IconLogout />} component="a" label="Cerrar sesion" />
             </Link>
           </Navbar.Section>
         </Navbar>
       }
       header={
-          <Header height={70} p="md">
-            <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-              <MediaQuery largerThan="sm" styles={{ display: 'none' }}>
-                <Burger
-                  opened={opened}
-                  onClick={() => setOpened((o) => !o)}
-                  size="sm"
-                  color={theme.colors.gray[6]}
-                  mr="xl"
-                />
-              </MediaQuery>
-              {
-                matches ? (
-                <Group>
-                  <Logo />
-                </Group>
-                ) : (
-                  <Container>
-                    <Logo />
-                  </Container>
-                )
-              }
-            </div>
-          </Header>
+        <Header height={70} p="md">
+          <Group position={isMobile ? 'apart' : 'left'}>
+            <MediaQuery largerThan="sm" styles={{ display: 'none' }}>
+              <Burger
+                opened={opened}
+                onClick={() => setOpened((o) => !o)}
+              />
+            </MediaQuery>
+            <Logo />
+            <ActionIcon
+              onClick={() => toggleColorScheme()}
+              size='sm'
+              sx={(theme) => ({
+                backgroundColor:
+                  theme.colorScheme === 'dark' ? theme.colors.dark[6] : theme.colors.gray[0],
+                color: theme.colorScheme === 'dark' ? theme.colors.yellow[4] : theme.colors.blue[6],
+                maxWidth: '30px'
+              })}
+            >
+              {colorScheme === 'dark' ? <IconSun size={24} /> : <IconMoonStars size={24} />}
+            </ActionIcon>
+          </Group>
+        </Header>
       }
       styles={(theme) => ({
         main: {

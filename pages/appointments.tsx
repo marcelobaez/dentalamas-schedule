@@ -14,7 +14,6 @@ import {
   Modal,
   Select,
   Stack,
-  Chip,
   Grid,
   Title,
   Loader,
@@ -42,7 +41,7 @@ import useAppointments from '../hooks/useAppointments/useAppointments';
 import useTreatments from '../hooks/useTreatments/useTreatments';
 import useSpecialists from '../hooks/useSpecialists/useSpecialists';
 import { AppointmentsResponse } from '../types/appointment';
-import { useDebouncedValue } from '@mantine/hooks';
+import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { Patient } from '../types/patient';
 import { getAvatarFromFullName } from '../utils/getAvatarName';
 
@@ -93,6 +92,8 @@ export default function Appointments() {
   const [patientsOpened, setPatientsModalOpen] = useState(false);
   const { data: appointmentsData, isLoading: isLoadingAppointments } = useAppointments();
   const [emptyResults, setEmptyResults] = useState(false);
+
+  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
 
   //Get data for modal form
   const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
@@ -221,6 +222,15 @@ export default function Appointments() {
     return patientsList;
   };
 
+  if (isLoadingAppointments)
+    return (
+      <Group position="center">
+        <Paper>
+          <Loader size={'xl'} />
+        </Paper>
+      </Group>
+    );
+
   return (
     <Grid>
       <Grid.Col span={12}>
@@ -304,8 +314,9 @@ export default function Appointments() {
             </Table>
           </ScrollArea>
           <Modal
-            size="55%"
+            size={isMobile ? '100%' : '55%'}
             opened={opened}
+            centered
             onClose={() => setOpened(false)}
             title={
               <Text size="md" weight={600}>
@@ -317,9 +328,8 @@ export default function Appointments() {
             {isLoadingSpecialist || (isLoadingTreatments && <Loader />)}
             {appointmentsData && treatmentsData && specialistsData && (
               <form onSubmit={form.onSubmit(handleSubmit)}>
-                <Stack>
                   <Grid>
-                    <Grid.Col span={6}>
+                    <Grid.Col sm={12} md={6}>
                       <Group align={'end'}>
                         <Autocomplete
                           itemComponent={SelectItem}
@@ -329,9 +339,7 @@ export default function Appointments() {
                           onChange={setValue}
                           rightSection={isFetching ? <Loader size={16} /> : null}
                           label="Paciente"
-                          nothingFound={
-                            emptyResults ? 'No se encontraron pacientes' : ''
-                          }
+                          nothingFound={emptyResults ? 'No se encontraron pacientes' : ''}
                           placeholder="Busque por apellido del paciente"
                           filter={(value, item) => true}
                           onItemSubmit={(item: AutocompleteItem) =>
@@ -354,7 +362,7 @@ export default function Appointments() {
                         </Tooltip>
                       </Group>
                     </Grid.Col>
-                    <Grid.Col span={6}>
+                    <Grid.Col sm={12} md={6}>
                       <Select
                         label="Especialista"
                         placeholder="Especialista"
@@ -375,52 +383,52 @@ export default function Appointments() {
                         }))}
                       />
                     </Grid.Col>
+                    <Grid.Col sm={12} md={6}>
+                      <Text size="sm" weight={500}>
+                        Elija el dia
+                      </Text>
+                      <Calendar
+                        excludeDate={(date) => date.getDay() === 0}
+                        minDate={new Date()}
+                        locale="es"
+                        value={dayValue}
+                        onChange={handleDayChange}
+                      />
+                    </Grid.Col>
+                    <Grid.Col sm={12} md={6}>
+                      <Stack>
+                        <TimeRangeInput
+                          icon={<IconClock size={16} />}
+                          // error="Debe indicar un rango valido"
+                          required
+                          label="Horario"
+                          value={timeRange}
+                          onChange={handleTimeRangechange}
+                          format="12"
+                        />
+                        <Select
+                          label="Motivo"
+                          placeholder="Motivo"
+                          {...form.getInputProps('treatment')}
+                          onChange={(value: string) => form.setFieldValue('treatment', value)}
+                          data={treatmentsData.map((item) => ({
+                            value: `${item.id}`,
+                            label: item.name,
+                          }))}
+                        />
+                      </Stack>
+                    </Grid.Col>
+                    <Grid.Col span={12}>
+                      <Group position="right">
+                        <Button variant="outline" onClick={() => setOpened(false)}>
+                          Cancelar
+                        </Button>
+                        <Button loading={isMutating} disabled={isMutating} type="submit">
+                          Agendar
+                        </Button>
+                      </Group>
+                    </Grid.Col>
                   </Grid>
-                  {/* <Group position='left'>
-                    
-                  </Group> */}
-                  <Text size="sm" weight={500}>
-                    Elija el dia
-                  </Text>
-                  <Group grow align={'flex-start'}>
-                    <Calendar
-                      excludeDate={(date) => date.getDay() === 0}
-                      minDate={new Date()}
-                      locale="es"
-                      value={dayValue}
-                      onChange={handleDayChange}
-                    />
-                    <Stack>
-                      <TimeRangeInput
-                        icon={<IconClock size={16} />}
-                        // error="Debe indicar un rango valido"
-                        required
-                        label="Horario"
-                        value={timeRange}
-                        onChange={handleTimeRangechange}
-                        format="12"
-                      />
-                      <Select
-                        label="Motivo"
-                        placeholder="Motivo"
-                        {...form.getInputProps('treatment')}
-                        onChange={(value: string) => form.setFieldValue('treatment', value)}
-                        data={treatmentsData.map((item) => ({
-                          value: `${item.id}`,
-                          label: item.name,
-                        }))}
-                      />
-                    </Stack>
-                  </Group>
-                  <Group position="right" mt="md">
-                    <Button variant="outline" onClick={() => setOpened(false)}>
-                      Cancelar
-                    </Button>
-                    <Button loading={isMutating} disabled={isMutating} type="submit">
-                      Agendar
-                    </Button>
-                  </Group>
-                </Stack>
               </form>
             )}
           </Modal>

@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   ColorSwatch,
+  Grid,
   Group,
   Loader,
   Paper,
@@ -33,64 +34,73 @@ export default function Patients() {
     );
 
   return (
-    <Paper shadow="xs" p="md">
-      <Group position="right">
-        <Button leftIcon={<IconPlus />} onClick={() => setOpened(true)}>
-          Nuevo paciente
-        </Button>
-      </Group>
-      <Space h="md" />
-      <ScrollArea>
-        <Table sx={{ minWidth: 800 }} verticalSpacing="xs">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Telefono</th>
-              <th>Ultimo turno</th>
-              <th>Asistio</th>
-              {/* <th>Motivo</th> */}
-            </tr>
-          </thead>
-          <tbody>
-            {patients && patients.length > 0 ? (
-              patients.map((row, idx) => (
-                <tr key={`treat-row-${idx}`}>
-                  <td>
-                    <Group>
-                      <Avatar radius="xl" />
-                      <Box sx={{ flex: 1 }}>
-                        <Text size="sm" weight={500}>
-                          {`${row.firstName} ${row.lastName}`}
-                        </Text>
-                        <Text color="dimmed" size="xs">
-                          {row.email}
-                        </Text>
-                      </Box>
-                    </Group>
-                  </td>
-                  <td>
-                    <Text size="sm">{row.phone}</Text>
-                  </td>
-                  <td>
-                    <Text size="sm">{`01/01/2022`}</Text>
-                  </td>
-                  <td>
-                    <ColorSwatch color={theme.colors.green[6]} />
-                  </td>
+    <Grid>
+      <Grid.Col span={12}>
+        <Group position="apart">
+          <Text weight={600} size={'xl'}>
+            Pacientes
+          </Text>
+          <Button leftIcon={<IconPlus />} onClick={() => setOpened(true)}>
+            Nuevo paciente
+          </Button>
+        </Group>
+      </Grid.Col>
+      <Grid.Col span={12}>
+        <Paper shadow="xs" p="xs">
+          <Space h="md" />
+          <ScrollArea>
+            <Table sx={{ minWidth: 800 }} verticalSpacing="xs">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Telefono</th>
+                  <th>Ultimo turno</th>
+                  <th>Asistio</th>
+                  {/* <th>Motivo</th> */}
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td>
-                  <Text size="md">Aun no se cargaron pacientes</Text>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </Table>
-      </ScrollArea>
-      <PatientsCreateModal opened={opened} handleModalState={setOpened} />
-    </Paper>
+              </thead>
+              <tbody>
+                {patients && patients.length > 0 ? (
+                  patients.map((row, idx) => (
+                    <tr key={`treat-row-${idx}`}>
+                      <td>
+                        <Group>
+                          <Avatar radius="xl" />
+                          <Box sx={{ flex: 1 }}>
+                            <Text size="sm" weight={500}>
+                              {`${row.firstName} ${row.lastName}`}
+                            </Text>
+                            <Text color="dimmed" size="xs">
+                              {row.email}
+                            </Text>
+                          </Box>
+                        </Group>
+                      </td>
+                      <td>
+                        <Text size="sm">{row.phone}</Text>
+                      </td>
+                      <td>
+                        <Text size="sm">{`01/01/2022`}</Text>
+                      </td>
+                      <td>
+                        <ColorSwatch color={theme.colors.green[6]} />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td>
+                      <Text size="md">Aun no se cargaron pacientes</Text>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          </ScrollArea>
+          <PatientsCreateModal opened={opened} handleModalState={setOpened} />
+        </Paper>
+      </Grid.Col>
+    </Grid>
   );
 }
 

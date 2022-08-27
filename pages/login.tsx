@@ -17,6 +17,8 @@ import { IconArrowLeft } from '@tabler/icons';
 import { showNotification } from '@mantine/notifications';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
+import { ApiError } from 'next/dist/server/api-utils';
+import { useForm } from '@mantine/form';
 
 const useStyles = createStyles((theme) => ({
   title: {
@@ -43,7 +45,18 @@ export default function AuthenticationTitle() {
   const router = useRouter();
   const { classes } = useStyles();
   const [loading, setLoading] = useState(false)
-  const [email, setEmail] = useState('')
+
+  const form = useForm({
+    initialValues: {
+      email: ''
+    },
+    validate: {
+      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : 'Email no valido'),
+    },
+  });
+
+  // Get inferred form values type
+  type FormValues = typeof form.values;
 
   useEffect(() => {
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(
@@ -59,19 +72,30 @@ export default function AuthenticationTitle() {
     }
   }, [])
 
-  const handleLogin = async (email: string) => {
+  const handleLogin = async (values: FormValues) => {
     try {
       setLoading(true)
-      const { error } = await supabaseClient.auth.signIn({ email })
-      if (error) throw error
-      showNotification({
-        title: 'Listo!',
-        message: 'Revisa tu email para encontrar el link de acceso',
-        color: 'green'
-      })
+      const { error } = await supabaseClient.auth.signIn({ email: values.email }, {redirectTo: process.env.NEXT_PUBLIC_SITE_URL})
+      if (error && error.status === 403) {
+        showNotification({
+          title: 'Lo sentimos!',
+          message: 'Los registros no estan habilitados. Solicite al administrador una cuenta',
+          color: 'red'
+        })
+      } else {
+        showNotification({
+          title: 'Listo!',
+          message: 'Revisa tu email para encontrar el link de acceso',
+          color: 'green'
+        })
+      }
     } catch (error) {
-      // alert(error.error_description || error.message)
-      console.log(error)
+      showNotification({
+        title: 'Lo sentimos!',
+        message: 'Ocurrio un error al intentar inciar sesion',
+        color: 'red'
+      })
+      console.log(error);
     } finally {
       setLoading(false)
     }
@@ -85,18 +109,19 @@ export default function AuthenticationTitle() {
       <Text color="dimmed" size="sm" align="center">
         Ingresa tu email para obtener un link de acceso
       </Text>
-
       <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
-        <TextInput label="Tu email" placeholder="" type={'email'} required onChange={(e) => setEmail(e.target.value)} value={email}/>
-        <Group position="apart" mt="lg" className={classes.controls}>
-          <Anchor color="dimmed" size="sm" className={classes.control}>
-            <Center inline>
-              <IconArrowLeft size={12} stroke={1.5} />
-              <Box ml={5}>Regresar a la pagina de inicio</Box>
-            </Center>
-          </Anchor>
-          <Button onClick={() => handleLogin(email)} disabled={loading} loading={loading} className={classes.control}>Obtener link</Button>
-        </Group>
+        <form onSubmit={form.onSubmit(handleLogin)}>
+          <TextInput label="Tu email" placeholder="email@ejemplo.com" required {...form.getInputProps('email')}/>
+          <Group position="apart" mt="lg" className={classes.controls}>
+            <Anchor color="dimmed" size="sm" className={classes.control}>
+              <Center inline>
+                <IconArrowLeft size={12} stroke={1.5} />
+                <Box ml={5}>Regresar a la pagina de inicio</Box>
+              </Center>
+            </Anchor>
+            <Button type='submit' loading={loading} className={classes.control}>Obtener link</Button>
+          </Group>
+        </form>
       </Paper>
     </Container>
   );

@@ -42,9 +42,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
         <MantineProvider
           withGlobalStyles
           withNormalizeCSS
-          theme={{
-            colorScheme: 'light',
-          }}
+          theme={{ colorScheme }}
         >
           <RouteTransition />
           <NotificationsProvider position="top-center">
