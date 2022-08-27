@@ -1,4 +1,4 @@
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
+import { getUser, supabaseClient } from '@supabase/auth-helpers-nextjs';
 import { ReactElement, useEffect, useState } from 'react';
 import {
   TextInput,
@@ -15,6 +15,8 @@ import {
 } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons';
 import { showNotification } from '@mantine/notifications';
+import { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
 
 const useStyles = createStyles((theme) => ({
   title: {
@@ -38,9 +40,24 @@ const useStyles = createStyles((theme) => ({
 }));
 
 export default function AuthenticationTitle() {
+  const router = useRouter();
   const { classes } = useStyles();
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
+
+  useEffect(() => {
+    const { data: authListener } = supabaseClient.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          router.push('/calendar');
+        }
+      }
+    )
+
+    return () => {
+      authListener!.unsubscribe()
+    }
+  }, [])
 
   const handleLogin = async (email: string) => {
     try {

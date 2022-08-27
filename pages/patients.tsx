@@ -1,100 +1,36 @@
-import { Avatar, Box, Button, ColorSwatch, Group, Modal, Paper, ScrollArea, Space, Stack, Table, Text, TextInput, useMantineTheme } from "@mantine/core";
-import { useForm } from "@mantine/form";
-import { showNotification } from "@mantine/notifications";
-import { supabaseServerClient, withPageAuth } from "@supabase/auth-helpers-nextjs";
-import { IconMail, IconPhone, IconPlus } from "@tabler/icons";
-import axios from "axios";
-import dayjs from "dayjs";
-import { useState } from "react";
+import { useState } from 'react';
+import {
+  Avatar,
+  Box,
+  Button,
+  ColorSwatch,
+  Group,
+  Loader,
+  Paper,
+  ScrollArea,
+  Space,
+  Table,
+  Text,
+  useMantineTheme,
+} from '@mantine/core';
+import { withPageAuth } from '@supabase/auth-helpers-nextjs';
+import { IconPlus } from '@tabler/icons';
+import PatientsCreateModal from '../components/features/PatientsCreateModal/PatientsCreateModal';
+import usePatients from '../hooks/usePatients/usePatients';
 
-interface TableReviewsProps {
-  patients: {
-    id: number;
-    firstName: string;
-    lastName: string;
-    phone: string;
-    email: string;
-  }[];
-}
-
-export default function Patients({patients}: TableReviewsProps) {
-  const [isSubmitting, setSubmitting] = useState(false);
+export default function Patients() {
   const [opened, setOpened] = useState(false);
   const theme = useMantineTheme();
-  
-  const form = useForm({
-    initialValues: {
-      firstName: '',
-      lastName: '',
-      phone: '',
-      email: ''
-    },
-  });
+  const { data: patients, isLoading, error } = usePatients();
 
-  // Get inferred form values type
-  type FormValues = typeof form.values;
-
-  // form submission handler
-  const handleSubmit = async (values: FormValues) => {
-    try {
-      setSubmitting(true)
-      await axios.post('/api/patients', values);
-      form.reset();
-
-      // Show success notification
-      showNotification({
-        title: 'Exito!',
-        message: 'Se agrego el paciente correctamente',
-        color: 'green'
-      });
-
-    } catch (error) {
-      console.log(error);
-
-      showNotification({
-        title: 'Error!',
-        message: 'Hubo un error al intentar agendar el turno',
-        color: 'red'
-      });
-    } finally {
-      setSubmitting(false)
-      setOpened(false)
-    }
-
-  };
-
-  const rows = patients.map((row, idx) => {
+  if (isLoading)
     return (
-      <tr key={`treat-row-${idx}`}>
-        <td>
-        <Group>
-          <Avatar
-            radius="xl"
-          />
-          <Box sx={{ flex: 1 }}>
-            <Text size="sm" weight={500}>
-              {`${row.firstName} ${row.lastName}`}
-            </Text>
-            <Text color="dimmed" size="xs">
-              {row.email}
-            </Text>
-          </Box>
-
-          {/* {theme.dir === 'ltr' ? <IconChevronRight size={18} /> : <IconChevronLeft size={18} />} */}
-        </Group>
-        </td>
-        <td>
-          <Text size="sm">{row.phone}</Text>
-        </td>
-        <td>
-          <Text size="sm">{dayjs().format()}</Text>
-        </td>
-        <td>
-          <ColorSwatch color={theme.colors.green[6]} />
-        </td>
-      </tr>
+      <Group position="center">
+        <Paper>
+          <Loader size={'xl'} />
+        </Paper>
+      </Group>
     );
-  });
 
   return (
     <Paper shadow="xs" p="md">
@@ -115,50 +51,49 @@ export default function Patients({patients}: TableReviewsProps) {
               {/* <th>Motivo</th> */}
             </tr>
           </thead>
-          <tbody>{rows}</tbody>
+          <tbody>
+            {patients && patients.length > 0 ? (
+              patients.map((row, idx) => (
+                <tr key={`treat-row-${idx}`}>
+                  <td>
+                    <Group>
+                      <Avatar radius="xl" />
+                      <Box sx={{ flex: 1 }}>
+                        <Text size="sm" weight={500}>
+                          {`${row.firstName} ${row.lastName}`}
+                        </Text>
+                        <Text color="dimmed" size="xs">
+                          {row.email}
+                        </Text>
+                      </Box>
+                    </Group>
+                  </td>
+                  <td>
+                    <Text size="sm">{row.phone}</Text>
+                  </td>
+                  <td>
+                    <Text size="sm">{`01/01/2022`}</Text>
+                  </td>
+                  <td>
+                    <ColorSwatch color={theme.colors.green[6]} />
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td>
+                  <Text size="md">Aun no se cargaron pacientes</Text>
+                </td>
+              </tr>
+            )}
+          </tbody>
         </Table>
       </ScrollArea>
-      <Modal
-        size={460}
-        opened={opened}
-        onClose={() => setOpened(false)}
-        title={
-          <Text size="md" weight={600}>
-            Ingresar nuevo paciente
-          </Text>
-        }
-      >
-        {/* Modal content */}
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack>
-            <TextInput required label="Nombre" placeholder="Nombre" {...form.getInputProps('firstName')} />
-            <TextInput required mt="xs" label="Apellido" placeholder="Apellido" {...form.getInputProps('lastName')} />
-            <TextInput required mt="xs" label="Celular" placeholder="Celular" icon={<IconPhone size={14} />} {...form.getInputProps('phone')}/>
-            <TextInput required mt="xs" label="Email" placeholder="mail@ejemplo.com" icon={<IconMail size={14} />} {...form.getInputProps('email')}/>
-            <Group position="right" mt="md">
-              <Button variant="outline" onClick={() => setOpened(false)}>Cancelar</Button>
-              <Button loading={isSubmitting} disabled={isSubmitting} type="submit">Agregar</Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
+      <PatientsCreateModal opened={opened} handleModalState={setOpened} />
     </Paper>
-  )
+  );
 }
 
-export const getServerSideProps = withPageAuth({ redirectTo: '/login', 
-async getServerSideProps(ctx) {
-  // Get appointments
-  const { data: patientsData } = await supabaseServerClient(ctx)
-    .from('patients')
-    .select(
-      'firstName, lastName, phone, email',
-    );
-
-  return {
-    props: {
-      patients: patientsData,
-    },
-  };
-},
+export const getServerSideProps = withPageAuth({
+  redirectTo: '/login',
 });

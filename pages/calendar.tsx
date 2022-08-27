@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Calendar as BigCalendar, luxonLocalizer, Views } from 'react-big-calendar';
 import { DateTime, Settings } from 'luxon';
 import { User } from '@supabase/auth-helpers-react';
-import { supabaseServerClient, withPageAuth } from '@supabase/auth-helpers-nextjs';
+import { getUser, supabaseServerClient, withPageAuth } from '@supabase/auth-helpers-nextjs';
 import dayjs from 'dayjs';
+import { GetServerSideProps } from 'next';
+import { dehydrate, QueryClient } from '@tanstack/react-query';
+import { AppointmentsResponse } from '../types/appointment';
+import useAppointments from '../hooks/useAppointments/useAppointments';
 
 const defaultTZ = DateTime.local().zoneName;
 
@@ -22,8 +26,10 @@ const spMessages = {
   },
 };
 
-export default function Calendar({ appointments }: { user: User; appointments: any }) {
+export default function Calendar() {
   const [timezone, setTimezone] = useState(defaultTZ);
+  const { data, isLoading } = useAppointments();
+  const appointmentsData = data || [];
 
   const { defaultDate, getNow, localizer, myEvents, scrollToTime } = useMemo(() => {
     Settings.defaultZone = timezone;
@@ -31,10 +37,10 @@ export default function Calendar({ appointments }: { user: User; appointments: a
       defaultDate: DateTime.local().toJSDate(),
       getNow: () => DateTime.local().toJSDate(),
       localizer: luxonLocalizer(DateTime),
-      myEvents: appointments.map((item: any) => ({
-        ...item,
-        start: new Date(item.start),
-        end: new Date(item.end),
+      myEvents: appointmentsData.map((item) => ({
+        title: `${item.patients.firstName} ${item.patients.lastName}: ${item.treatments.name}`,
+        start: new Date(item.startDate),
+        end: new Date(item.endDate),
       })),
       scrollToTime: DateTime.local().toJSDate(),
     };
@@ -67,16 +73,26 @@ export default function Calendar({ appointments }: { user: User; appointments: a
 export const getServerSideProps = withPageAuth({
   redirectTo: '/login',
   async getServerSideProps(ctx) {
-    // Run queries with RLS on the server
-    const { data } = await supabaseServerClient(ctx)
-      .from('appointments')
-      .select('startDate, endDate, patients ( firstName, lastName, phone, email), treatments ( name )');
-    // console.log(data);
-    const appointments = data?.map((item) => ({
-      title: `${item.treatments.name} - ${item.patients.firstName} ${item.patients.lastName}`,
-      start: item.startDate,
-      end: item.endDate,
-    }));
-    return { props: { appointments } };
+    // Get appointments
+    const queryClient = new QueryClient();
+    await queryClient.prefetchQuery(['appointments'], async () => {
+      const { data, error } = await supabaseServerClient(ctx)
+        .from<AppointmentsResponse>('appointments')
+        .select(
+          'startDate, endDate, patients ( firstName, lastName, phone, email), treatments ( name ), specialists ( firstName, lastName )',
+        );
+
+      if (error) throw new Error(`${error.message}: ${error.details}`);
+
+      console.log(data)
+
+      return data;
+    });
+
+    return {
+      props: {
+        dehydratedState: dehydrate(queryClient),
+      },
+    };
   },
 });
