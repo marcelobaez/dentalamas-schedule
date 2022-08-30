@@ -3,7 +3,6 @@ import { useAtom } from 'jotai';
 import {
   AppShell,
   Navbar,
-  useMantineTheme,
   Group,
   useMantineColorScheme,
   createStyles,
@@ -11,8 +10,6 @@ import {
   Header,
   MediaQuery,
   Burger,
-  Text,
-  Container,
   ActionIcon,
 } from '@mantine/core';
 import Logo from './Logo';
@@ -55,7 +52,7 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
   const [opened, setOpened] = useAtom(menuAtom);
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const { classes, cx } = useStyles();
-  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
+  // const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
 
   const { user } = useUser();
   const [profile, setData] = useState();
@@ -78,7 +75,7 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
     <AppShell
       navbarOffsetBreakpoint="sm"
       navbar={
-        <Navbar hiddenBreakpoint="sm" hidden={!opened} width={{ sm: 300 }} p="md">
+        <Navbar hiddenBreakpoint="sm" hidden={!opened} width={{ sm: 300 }} py="md">
           <Navbar.Section grow>
             <MainNavLinks />
           </Navbar.Section>
@@ -92,22 +89,20 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
       }
       header={
         <Header height={70} p="md">
-          <Group position={isMobile ? 'apart' : 'left'}>
+          <Group position={'apart'}>
             <MediaQuery largerThan="sm" styles={{ display: 'none' }}>
-              <Burger
-                opened={opened}
-                onClick={() => setOpened((o) => !o)}
-              />
+              <Burger opened={opened} onClick={() => setOpened((o) => !o)} />
             </MediaQuery>
             <Logo />
             <ActionIcon
               onClick={() => toggleColorScheme()}
-              size='sm'
+              size="sm"
+              variant="transparent"
               sx={(theme) => ({
                 backgroundColor:
                   theme.colorScheme === 'dark' ? theme.colors.dark[6] : theme.colors.gray[0],
-                color: theme.colorScheme === 'dark' ? theme.colors.yellow[4] : theme.colors.blue[6],
-                maxWidth: '30px'
+                color: theme.colorScheme === 'dark' ? theme.colors.yellow[4] : theme.colors.gray[6],
+                maxWidth: '30px',
               })}
             >
               {colorScheme === 'dark' ? <IconSun size={24} /> : <IconMoonStars size={24} />}

@@ -1,15 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar as BigCalendar, luxonLocalizer, Views } from 'react-big-calendar';
+import {
+  Calendar as BigCalendar,
+  luxonLocalizer,
+  View,
+  ToolbarProps,
+  NavigateAction,
+} from 'react-big-calendar';
 import { DateTime, Settings } from 'luxon';
-import { User } from '@supabase/auth-helpers-react';
-import { getUser, supabaseServerClient, withPageAuth } from '@supabase/auth-helpers-nextjs';
-import dayjs from 'dayjs';
-import { GetServerSideProps } from 'next';
+import { supabaseServerClient, withPageAuth } from '@supabase/auth-helpers-nextjs';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
 import { AppointmentsResponse } from '../types/appointment';
 import useAppointments from '../hooks/useAppointments/useAppointments';
+import Head from 'next/head';
+import { Grid, Group, SegmentedControl, Text } from '@mantine/core';
+import dayjs from 'dayjs';
 
 const defaultTZ = DateTime.local().zoneName;
+
+const dateFormatOptions = { month: 'long', day: 'numeric' };
+const LOCALE = 'es-AR';
 
 const spMessages = {
   es: {
@@ -26,23 +35,44 @@ const spMessages = {
   },
 };
 
+const EventComponent = (event: any) => {
+  return (
+    <Text size="sm" weight={500}>
+      {event.title}
+    </Text>
+  );
+};
+
 export default function Calendar() {
   const [timezone, setTimezone] = useState(defaultTZ);
   const { data, isLoading } = useAppointments();
   const appointmentsData = data || [];
+  const [defaultView, setDefaultView] = useState<View>('week');
 
-  const { defaultDate, getNow, localizer, myEvents, scrollToTime } = useMemo(() => {
+  const { defaultDate, getNow, localizer, myEvents, scrollToTime, formats } = useMemo(() => {
     Settings.defaultZone = timezone;
     return {
       defaultDate: DateTime.local().toJSDate(),
       getNow: () => DateTime.local().toJSDate(),
       localizer: luxonLocalizer(DateTime),
       myEvents: appointmentsData.map((item) => ({
-        title: `${item.patients.firstName} ${item.patients.lastName}: ${item.treatments.name}`,
+        title: `${item.treatments.name}`,
         start: new Date(item.startDate),
         end: new Date(item.endDate),
+        aproved: true,
+        treatment: item.treatments.name,
+        specialist: `${item.specialists.firstName} ${item.specialists.lastName}`,
       })),
-      scrollToTime: DateTime.local().toJSDate(),
+      scrollToTime: new Date(),
+      formats: {
+        dayHeaderFormat: (date: Date, localizer: any) =>
+          date.toLocaleString(LOCALE, { month: 'long', day: 'numeric' }),
+        dayRangeHeaderFormat: (range: any, localizer: any) =>
+          `${range.start.toLocaleString(LOCALE, {
+            month: 'long',
+            day: 'numeric',
+          })} - ${range.end.toLocaleString(LOCALE, { month: 'long', day: 'numeric' })}`,
+      },
     };
   }, [timezone]);
 
@@ -52,20 +82,56 @@ export default function Calendar() {
     };
   }, []);
 
+  const CustomToolbar = (props: ToolbarProps) => {
+    return (
+      <Group position="apart">
+        <SegmentedControl
+          onChange={(value: NavigateAction) => props.onNavigate(value)}
+          data={[
+            { label: 'Hoy', value: 'TODAY' },
+            { label: 'Anterior', value: 'PREV' },
+            { label: 'Siguiente', value: 'NEXT' },
+          ]}
+        />
+        <Text>{props.label}</Text>
+        <SegmentedControl
+          onChange={(value: View) => setDefaultView(value)}
+          value={defaultView}
+          data={[
+            // { label: 'Mes', value: 'month' },
+            { label: 'Semana', value: 'week' },
+            { label: 'Dia', value: 'day' },
+            { label: 'Agenda', value: 'agenda' },
+          ]}
+        />
+      </Group>
+    );
+  };
+
   return (
     <>
-      <div style={{ height: '600px' }}>
-        <BigCalendar
-          defaultDate={defaultDate}
-          defaultView={Views.WEEK}
-          events={myEvents}
-          getNow={getNow}
-          localizer={localizer}
-          scrollToTime={scrollToTime}
-          culture={'es'}
-          messages={spMessages.es}
-        />
-      </div>
+      <Head>
+        <title>Calendario</title>
+        <meta name="description" content="Calendario de turnos" />
+      </Head>
+      <Grid>
+        <Grid.Col span={12}>
+          <BigCalendar
+            defaultDate={defaultDate}
+            view={defaultView}
+            events={myEvents}
+            getNow={getNow}
+            localizer={localizer}
+            culture={'es'}
+            messages={spMessages.es}
+            formats={formats}
+            components={{
+              event: EventComponent,
+              toolbar: CustomToolbar,
+            }}
+          />
+        </Grid.Col>
+      </Grid>
     </>
   );
 }
@@ -76,15 +142,14 @@ export const getServerSideProps = withPageAuth({
     // Get appointments
     const queryClient = new QueryClient();
     await queryClient.prefetchQuery(['appointments'], async () => {
-      const { data, error } = await supabaseServerClient(ctx)
+      const { data, error, count } = await supabaseServerClient(ctx)
         .from<AppointmentsResponse>('appointments')
         .select(
           'startDate, endDate, patients ( firstName, lastName, phone, email), treatments ( name ), specialists ( firstName, lastName )',
+          { count: 'exact' },
         );
 
       if (error) throw new Error(`${error.message}: ${error.details}`);
-
-      console.log(data)
 
       return data;
     });
