@@ -4,28 +4,24 @@ import {
   Avatar,
   Box,
   Button,
-  Checkbox,
-  ColorSwatch,
   createStyles,
   Grid,
   Group,
   Loader,
   Paper,
   ScrollArea,
-  Space,
   Table,
   Text,
   Tooltip,
-  useMantineTheme,
 } from '@mantine/core';
 import { withPageAuth } from '@supabase/auth-helpers-nextjs';
-import { IconEdit, IconPlus, IconTrash } from '@tabler/icons';
-import PatientsCreateModal from '../components/features/PatientsCreateModal/PatientsCreateModal';
+import { IconEdit, IconUserPlus } from '@tabler/icons';
 import usePatients from '../hooks/usePatients/usePatients';
 import Head from 'next/head';
 import PatientsEditModal from '../components/features/PatientsEditModal/PatientsEditModal';
 import { Patient } from '../types/patient';
-import { openContextModal, useModals } from '@mantine/modals';
+import { openContextModal } from '@mantine/modals';
+import { DateTime } from 'luxon';
 
 const useStyles = createStyles((theme) => ({
   rowSelected: {
@@ -37,14 +33,11 @@ const useStyles = createStyles((theme) => ({
 }));
 
 export default function Patients() {
-  const { classes, cx } = useStyles();
-  const [createModalOpened, setCreateModalOpened] = useState(false);
+  // const { classes, cx } = useStyles();
   const [editModalOpened, setEditModalOpened] = useState(false);
-  const theme = useMantineTheme();
   const { data: patients, isLoading, error } = usePatients();
   const [selection, setSelection] = useState(['']);
   const [selectedItem, setSelectedItem] = useState<Patient>();
-  const modals = useModals();
 
   const toggleRow = (id: string) =>
     setSelection((current) =>
@@ -85,7 +78,7 @@ export default function Patients() {
             <Text weight={600} size={'xl'}>
               Pacientes
             </Text>
-            <Button leftIcon={<IconPlus />} onClick={() => openCreateModal()}>
+            <Button leftIcon={<IconUserPlus />} onClick={() => openCreateModal()}>
               Nuevo paciente
             </Button>
           </Group>
@@ -108,9 +101,9 @@ export default function Patients() {
                     </th> */}
                     <th>Nombre</th>
                     <th>Telefono</th>
-                    {/* <th>Ultimo turno</th> */}
                     <th>Email</th>
-                    {/* <th>Acciones</th> */}
+                    <th>Creado el</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -120,7 +113,7 @@ export default function Patients() {
                       return (
                         <tr
                           key={`treat-row-${idx}`}
-                          className={cx({ [classes.rowSelected]: selected })}
+                          // className={cx({ [classes.rowSelected]: selected })}
                         >
                           {/* <td>
                             <Checkbox
@@ -148,7 +141,15 @@ export default function Patients() {
                           <td>
                             <Text size="sm">{row.email}</Text>
                           </td>
-                          {/* <td>
+                          <td>
+                            <Text size="sm">
+                              {new Date(row.created_at).toLocaleString(
+                                'es-AR',
+                                DateTime.DATETIME_MED,
+                              )}
+                            </Text>
+                          </td>
+                          <td>
                             <Group>
                               <Tooltip label="Editar paciente">
                                 <ActionIcon>
@@ -161,13 +162,8 @@ export default function Patients() {
                                   />
                                 </ActionIcon>
                               </Tooltip>
-                              <Tooltip label="Eliminar paciente">
-                                <ActionIcon>
-                                  <IconTrash color="red" size={18} />
-                                </ActionIcon>
-                              </Tooltip>
                             </Group>
-                          </td> */}
+                          </td>
                           {/* <td>
                           <ColorSwatch color={theme.colors.green[6]} />
                         </td> */}
@@ -184,10 +180,6 @@ export default function Patients() {
                 </tbody>
               </Table>
             </ScrollArea>
-            {/* <PatientsCreateModal
-              opened={createModalOpened}
-              handleModalState={setCreateModalOpened}
-            /> */}
             {selectedItem && (
               <PatientsEditModal
                 opened={editModalOpened}

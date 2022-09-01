@@ -17,11 +17,11 @@ import dayjs from 'dayjs';
 import { Tooltip } from '@mantine/core';
 
 // forwardRef function will allow to get root element ref
-const MyBadge = forwardRef<HTMLDivElement, { color: string }>(({ color }, ref) => (
-  <div ref={ref} color={color}>
-    Badge
-  </div>
-));
+// const MyBadge = forwardRef<HTMLDivElement, { color: string }>(({ color }, ref) => (
+//   <div ref={ref} color={color}>
+//     Badge
+//   </div>
+// ));
 
 const defaultTZ = DateTime.local().zoneName;
 

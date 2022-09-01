@@ -5,19 +5,22 @@ import { Patient } from '../../types/patient';
 
 export default function usePatients() {
   const { user, error } = useUser();
-  return useQuery<Patient[]>(['patients'], async () => {
-    const { data, error } = await supabaseClient
-      .from('patients')
-      .select('id, firstName, lastName, phone, email');
+  return useQuery<Patient[]>(
+    ['patients'],
+    async () => {
+      const { data, error } = await supabaseClient
+        .from('patients')
+        .select('id, firstName, lastName, phone, email, created_at');
 
-    if (error) {
-      throw new Error(`${error.message}: ${error.details}`);
-    }
+      if (error) {
+        throw new Error(`${error.message}: ${error.details}`);
+      }
 
-    return data;
-  },
-  
-  {
-    enabled: !!user
-  });
+      return data;
+    },
+
+    {
+      enabled: !!user,
+    },
+  );
 }

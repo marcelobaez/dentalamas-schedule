@@ -1,16 +1,11 @@
-import { Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
+import { Button, Group, Stack, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { showNotification } from '@mantine/notifications';
 import { IconMail, IconPhone } from '@tabler/icons';
 import axios, { AxiosError } from 'axios';
-import { useQueryClient, useMutation, QueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { Patient } from '../../../types/patient';
 import { ContextModalProps } from '@mantine/modals';
-
-interface ModalProps {
-  onClose: () => void;
-  // opened: boolean;
-}
 
 interface ErrorResponse {
   message: string;
@@ -25,6 +20,15 @@ export default function PatientsCreateModal({ context, id }: ContextModalProps) 
       lastName: '',
       phone: '',
       email: '',
+    },
+    validate: {
+      firstName: (value) => (value.length < 3 ? 'El nombre es muy corto' : null),
+      lastName: (value) => (value.length < 3 ? 'El apellido es muy corto' : null),
+      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : 'Email no valido'),
+      phone: (value: string) =>
+        /^(?:(?:00)?549?)?0?(?:11|[2368]\d)(?:(?=\d{0,2}15)\d{2})??\d{8}$/.test(value)
+          ? null
+          : 'Numero de telefono incorrecto',
     },
   });
 
@@ -78,6 +82,7 @@ export default function PatientsCreateModal({ context, id }: ContextModalProps) 
           label="Celular"
           placeholder="Celular"
           icon={<IconPhone size={14} />}
+          // classNames={{ input: classes.invalid }}
           {...form.getInputProps('phone')}
         />
         <TextInput
@@ -85,6 +90,7 @@ export default function PatientsCreateModal({ context, id }: ContextModalProps) 
           label="Email"
           placeholder="mail@ejemplo.com"
           icon={<IconMail size={14} />}
+          // classNames={{ input: classes.invalid }}
           {...form.getInputProps('email')}
         />
         <Group position="right" mt="md">
@@ -97,6 +103,5 @@ export default function PatientsCreateModal({ context, id }: ContextModalProps) 
         </Group>
       </Stack>
     </form>
-    // </Modal>
   );
 }
