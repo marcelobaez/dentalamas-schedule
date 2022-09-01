@@ -1,6 +1,7 @@
 import {
   Avatar,
   Badge,
+  Box,
   CheckIcon,
   ColorSwatch,
   Group,
@@ -53,14 +54,15 @@ export default function AppointmentsTable({ data }: TableProps) {
                 </Group>
               </td>
               <td>
-                <Stack spacing="xs">
+                <Box sx={{ flex: 1 }}>
                   <Text
                     weight={500}
-                    color="gray"
                     size="sm"
                   >{`${item.patients.firstName} ${item.patients.lastName}`}</Text>
-                  <Text size="sm">{item.patients.phone}</Text>
-                </Stack>
+                  <Text color="dimmed" size="xs">
+                    {item.patients.phone}
+                  </Text>
+                </Box>
               </td>
               <td>
                 <Group spacing="sm">

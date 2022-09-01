@@ -5,17 +5,18 @@ import { IconMail, IconPhone } from '@tabler/icons';
 import axios, { AxiosError } from 'axios';
 import { useQueryClient, useMutation, QueryClient } from '@tanstack/react-query';
 import { Patient } from '../../../types/patient';
+import { ContextModalProps } from '@mantine/modals';
 
 interface ModalProps {
-  handleModalState: (state: boolean) => void;
-  opened: boolean;
+  onClose: () => void;
+  // opened: boolean;
 }
 
 interface ErrorResponse {
   message: string;
 }
 
-export default function PatientsCreateModal({ opened, handleModalState }: ModalProps) {
+export default function PatientsCreateModal({ context, id }: ContextModalProps) {
   const queryClient = useQueryClient();
 
   const form = useForm({
@@ -51,63 +52,51 @@ export default function PatientsCreateModal({ opened, handleModalState }: ModalP
     // Always refetch after error or success:
     onSettled: () => {
       queryClient.invalidateQueries(['patients']);
-      handleModalState(false);
+      context.closeModal(id);
     },
   });
 
   return (
-    <Modal
-      size={460}
-      opened={opened}
-      onClose={() => handleModalState(false)}
-      title={
-        <Text size="md" weight={600}>
-          Ingresar nuevo paciente
-        </Text>
-      }
-    >
-      {/* Modal content */}
-      <form onSubmit={form.onSubmit((values) => addPatientMutation.mutate(values))}>
-        <Stack>
-          <TextInput
-            required
-            label="Nombre"
-            placeholder="Nombre"
-            {...form.getInputProps('firstName')}
-          />
-          <TextInput
-            required
-            mt="xs"
-            label="Apellido"
-            placeholder="Apellido"
-            {...form.getInputProps('lastName')}
-          />
-          <TextInput
-            required
-            mt="xs"
-            label="Celular"
-            placeholder="Celular"
-            icon={<IconPhone size={14} />}
-            {...form.getInputProps('phone')}
-          />
-          <TextInput
-            required
-            mt="xs"
-            label="Email"
-            placeholder="mail@ejemplo.com"
-            icon={<IconMail size={14} />}
-            {...form.getInputProps('email')}
-          />
-          <Group position="right" mt="md">
-            <Button variant="outline" onClick={() => handleModalState(false)}>
-              Cancelar
-            </Button>
-            <Button loading={addPatientMutation.isLoading} type="submit">
-              Enviar
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+    <form onSubmit={form.onSubmit((values) => addPatientMutation.mutate(values))}>
+      <Stack>
+        <TextInput
+          required
+          label="Nombre"
+          placeholder="Nombre"
+          {...form.getInputProps('firstName')}
+        />
+        <TextInput
+          required
+          mt="xs"
+          label="Apellido"
+          placeholder="Apellido"
+          {...form.getInputProps('lastName')}
+        />
+        <TextInput
+          required
+          mt="xs"
+          label="Celular"
+          placeholder="Celular"
+          icon={<IconPhone size={14} />}
+          {...form.getInputProps('phone')}
+        />
+        <TextInput
+          mt="xs"
+          label="Email"
+          placeholder="mail@ejemplo.com"
+          icon={<IconMail size={14} />}
+          {...form.getInputProps('email')}
+        />
+        <Group position="right" mt="md">
+          <Button variant="outline" onClick={() => context.closeModal(id)}>
+            Cancelar
+          </Button>
+          <Button loading={addPatientMutation.isLoading} type="submit">
+            Enviar
+          </Button>
+        </Group>
+      </Stack>
+    </form>
+    // </Modal>
   );
 }

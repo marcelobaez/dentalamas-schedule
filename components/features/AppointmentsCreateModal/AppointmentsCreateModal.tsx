@@ -15,7 +15,7 @@ import {
 } from '@mantine/core';
 import { Calendar, TimeRangeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
-import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
+import { useDebouncedValue, useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { showNotification } from '@mantine/notifications';
 import { supabaseClient } from '@supabase/auth-helpers-nextjs';
 import { IconClock, IconUserPlus } from '@tabler/icons';
@@ -29,6 +29,7 @@ import { AppointmentsResponse } from '../../../types/appointment';
 import { Patient } from '../../../types/patient';
 import { getAvatarFromFullName } from '../../../utils/getAvatarName';
 import PatientsCreateModal from '../PatientsCreateModal/PatientsCreateModal';
+import { closeAllModals, useModals } from '@mantine/modals';
 
 interface ItemProps extends React.ComponentPropsWithoutRef<'div'> {
   image: string;
@@ -46,8 +47,9 @@ interface AppointmentRequest {
 }
 
 interface ModalProps {
-  handleModalState: (state: boolean) => void;
-  opened: boolean;
+  onClose: () => void;
+  onCreatePatient: () => void;
+  // opened: boolean;
 }
 
 const EXISTING_USERS = 'Pacientes encontrados';
@@ -76,10 +78,10 @@ const SelectItem = forwardRef<HTMLDivElement, ItemProps>(
 
 SelectItem.displayName = 'SelectItem';
 
-export default function AppointmentsCreateModal({ opened, handleModalState }: ModalProps) {
+export default function AppointmentsCreateModal({ onClose, onCreatePatient }: ModalProps) {
   const queryClient = useQueryClient();
   const [emptyResults, setEmptyResults] = useState(false);
-  const [patientsOpened, setPatientsModalOpen] = useState(false);
+  const [patientsOpened, { open, close }] = useDisclosure(false);
   const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
   // Time range state
   const now = new Date();
@@ -94,6 +96,8 @@ export default function AppointmentsCreateModal({ opened, handleModalState }: Mo
   //Get data for modal form
   const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
   const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
+
+  const modals = useModals();
 
   // Search query
   const { data: searchResults, isFetching } = useQuery<Patient[]>(
@@ -148,7 +152,7 @@ export default function AppointmentsCreateModal({ opened, handleModalState }: Mo
       // Always refetch after error or success:
       onSettled: () => {
         queryClient.invalidateQueries(['appointments']);
-        handleModalState(false);
+        onClose();
       },
     },
   );
@@ -208,18 +212,27 @@ export default function AppointmentsCreateModal({ opened, handleModalState }: Mo
     return patientsList;
   };
 
+  // const openCreateModal = () => {
+  //   const id = modals.openModal({
+  //     size: 460,
+  //     title: 'Registrar paciente',
+  //     children: <PatientsCreateModal onClose={() => modals.closeModal(id)} />,
+  //   });
+  // };
+
   return (
-    <Modal
-      size={isMobile ? '100%' : '55%'}
-      opened={opened}
-      centered
-      onClose={() => handleModalState(false)}
-      title={
-        <Text size="md" weight={600}>
-          Ingresar nuevo turno
-        </Text>
-      }
-    >
+    // <Modal
+    //   size={isMobile ? '100%' : '55%'}
+    //   opened={opened}
+    //   centered
+    //   onClose={() => onClose()}
+    //   title={
+    //     <Text size="md" weight={600}>
+    //       Ingresar nuevo turno
+    //     </Text>
+    //   }
+    // >
+    <>
       {/* Modal content */}
       {(isLoadingSpecialist || isLoadingTreatments) && <Loader />}
       {treatmentsData && specialistsData && (
@@ -248,7 +261,7 @@ export default function AppointmentsCreateModal({ opened, handleModalState }: Mo
                 />
                 <Tooltip label="Registrar nuevo paciente">
                   <ActionIcon
-                    onClick={() => setPatientsModalOpen(true)}
+                    onClick={() => onCreatePatient()}
                     size="lg"
                     color="blue"
                     variant="transparent"
@@ -316,18 +329,19 @@ export default function AppointmentsCreateModal({ opened, handleModalState }: Mo
             </Grid.Col>
             <Grid.Col span={12}>
               <Group position="right">
-                <Button variant="outline" onClick={() => handleModalState(false)}>
+                <Button variant="outline" onClick={() => onClose()}>
                   Cancelar
                 </Button>
-                <Button loading={isMutating} disabled={isMutating} type="submit">
+                <Button loading={isMutating} type="submit">
                   Agendar
                 </Button>
               </Group>
             </Grid.Col>
-            <PatientsCreateModal opened={patientsOpened} handleModalState={setPatientsModalOpen} />
+            {/* <PatientsCreateModal opened={patientsOpened} onClose={() => close()} /> */}
           </Grid>
         </form>
       )}
-    </Modal>
+    </>
+    // </Modal>
   );
 }

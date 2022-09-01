@@ -3,6 +3,7 @@ import { NextPage } from 'next';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import { ColorScheme, ColorSchemeProvider, MantineProvider } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
 import { NotificationsProvider } from '@mantine/notifications';
 import { UserProvider } from '@supabase/auth-helpers-react';
 import { supabaseClient } from '@supabase/auth-helpers-nextjs';
@@ -10,6 +11,7 @@ import AppShellLayout from '../components/Layout/AppShell';
 import { RouteTransition } from '../components/RouteTransition';
 import { Hydrate, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import PatientsCreateModal from '../components/features/PatientsCreateModal/PatientsCreateModal';
 
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -39,23 +41,21 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
         <meta name="viewport" content="minimum-scale=1, initial-scale=1, width=device-width" />
       </Head>
       <ColorSchemeProvider colorScheme={colorScheme} toggleColorScheme={toggleColorScheme}>
-        <MantineProvider
-          withGlobalStyles
-          withNormalizeCSS
-          theme={{ colorScheme }}
-        >
-          <RouteTransition />
-          <NotificationsProvider position="top-center">
-            <QueryClientProvider client={queryClient}>
-              <Hydrate state={pageProps.dehydratedState}>
-                <UserProvider supabaseClient={supabaseClient}>
-                  {getLayout(<Component {...pageProps} />)}
-                </UserProvider>
-              </Hydrate>
-              <ReactQueryDevtools position="bottom-right" />
-            </QueryClientProvider>
-          </NotificationsProvider>
-        </MantineProvider>
+        <QueryClientProvider client={queryClient}>
+          <Hydrate state={pageProps.dehydratedState}>
+            <UserProvider supabaseClient={supabaseClient}>
+              <MantineProvider withGlobalStyles withNormalizeCSS theme={{ colorScheme }}>
+                <ModalsProvider modals={{ patientsCreate: PatientsCreateModal }}>
+                  <RouteTransition />
+                  <NotificationsProvider position="top-center">
+                    {getLayout(<Component {...pageProps} />)}
+                    <ReactQueryDevtools position="bottom-right" />
+                  </NotificationsProvider>
+                </ModalsProvider>
+              </MantineProvider>
+            </UserProvider>
+          </Hydrate>
+        </QueryClientProvider>
       </ColorSchemeProvider>
     </>
   );

@@ -20,11 +20,16 @@ import useAppointments from '../hooks/useAppointments/useAppointments';
 import { AppointmentsResponse } from '../types/appointment';
 import AppointmentsCreateModal from '../components/features/AppointmentsCreateModal/AppointmentsCreateModal';
 import AppointmentsTable from '../components/features/AppointmentsTable/AppointmentsTable';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
+import { useModals, closeModal, openContextModal } from '@mantine/modals';
+import PatientsCreateModal from '../components/features/PatientsCreateModal/PatientsCreateModal';
 
 export default function Appointments() {
-  const [opened, setOpened] = useState(false);
+  const [opened, { open, close }] = useDisclosure(false);
   const { data: appointmentsData, isLoading: isLoadingAppointments } = useAppointments();
   const [activePage, setPage] = useState(1);
+  const modals = useModals();
+  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
 
   if (isLoadingAppointments)
     return (
@@ -34,6 +39,33 @@ export default function Appointments() {
         </Paper>
       </Group>
     );
+
+  const openCreatePatientModal = () => {
+    openContextModal({
+      modal: 'patientsCreate',
+      size: 460,
+      title: 'Registrar paciente',
+      innerProps: {},
+    });
+  };
+
+  const openCreateAppointmentModal = () => {
+    const id = modals.openModal({
+      modalId: 'appointmentsCreateModal',
+      centered: true,
+      size: isMobile ? '100%' : '55%',
+      title: 'Registrar turno',
+      children: (
+        <AppointmentsCreateModal
+          onClose={() => {
+            console.log('id appointments', id);
+            modals.closeModal('appointmentsCreateModal');
+          }}
+          onCreatePatient={() => openCreatePatientModal()}
+        />
+      ),
+    });
+  };
 
   return (
     <>
@@ -47,7 +79,7 @@ export default function Appointments() {
             <Text weight={600} size={'xl'}>
               Turnos
             </Text>
-            <Button leftIcon={<IconPlus />} onClick={() => setOpened(true)}>
+            <Button leftIcon={<IconPlus />} onClick={() => openCreateAppointmentModal()}>
               Nuevo turno
             </Button>
           </Group>
@@ -64,7 +96,7 @@ export default function Appointments() {
             </ScrollArea>
             <Space h="md" />
             {/* <Pagination page={activePage} onChange={setPage} total={5} /> */}
-            <AppointmentsCreateModal opened={opened} handleModalState={setOpened} />
+            {/* <AppointmentsCreateModal opened={opened} onClose={() => close()} /> */}
           </Paper>
         </Grid.Col>
       </Grid>
