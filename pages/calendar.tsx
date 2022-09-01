@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 import {
   Calendar as BigCalendar,
   luxonLocalizer,
@@ -12,8 +12,16 @@ import { dehydrate, QueryClient } from '@tanstack/react-query';
 import { AppointmentsResponse } from '../types/appointment';
 import useAppointments from '../hooks/useAppointments/useAppointments';
 import Head from 'next/head';
-import { Grid, Group, SegmentedControl, Text } from '@mantine/core';
+import { Box, Center, Grid, Group, SegmentedControl, Text } from '@mantine/core';
 import dayjs from 'dayjs';
+import { Tooltip } from '@mantine/core';
+
+// forwardRef function will allow to get root element ref
+const MyBadge = forwardRef<HTMLDivElement, { color: string }>(({ color }, ref) => (
+  <div ref={ref} color={color}>
+    Badge
+  </div>
+));
 
 const defaultTZ = DateTime.local().zoneName;
 
@@ -37,9 +45,11 @@ const spMessages = {
 
 const EventComponent = (event: any) => {
   return (
+    // <Center>
     <Text size="sm" weight={500}>
       {event.title}
     </Text>
+    // </Center>
   );
 };
 
@@ -125,6 +135,8 @@ export default function Calendar() {
             culture={'es'}
             messages={spMessages.es}
             formats={formats}
+            min={new Date(1972, 0, 1, 7, 0, 0, 0)}
+            max={new Date(2050, 0, 1, 22, 0, 0, 0)}
             components={{
               event: EventComponent,
               toolbar: CustomToolbar,
