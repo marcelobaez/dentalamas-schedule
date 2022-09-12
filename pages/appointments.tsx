@@ -13,19 +13,17 @@ import {
 } from '@mantine/core';
 import Head from 'next/head';
 import { supabaseServerClient, withPageAuth } from '@supabase/auth-helpers-nextjs';
-import { IconPlus, IconSearch } from '@tabler/icons';
+import { IconPlus } from '@tabler/icons';
 import 'dayjs/locale/es';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
 import useAppointments from '../hooks/useAppointments/useAppointments';
 import { AppointmentsResponse } from '../types/appointment';
 import AppointmentsCreateModal from '../components/features/AppointmentsCreateModal/AppointmentsCreateModal';
 import AppointmentsTable from '../components/features/AppointmentsTable/AppointmentsTable';
-import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { useModals, closeModal, openContextModal } from '@mantine/modals';
-import PatientsCreateModal from '../components/features/PatientsCreateModal/PatientsCreateModal';
+import { useMediaQuery } from '@mantine/hooks';
+import { useModals, openContextModal } from '@mantine/modals';
 
 export default function Appointments() {
-  const [opened, { open, close }] = useDisclosure(false);
   const { data: appointmentsData, isLoading: isLoadingAppointments } = useAppointments();
   const [activePage, setPage] = useState(1);
   const modals = useModals();
@@ -58,7 +56,6 @@ export default function Appointments() {
       children: (
         <AppointmentsCreateModal
           onClose={() => {
-            console.log('id appointments', id);
             modals.closeModal('appointmentsCreateModal');
           }}
           onCreatePatient={() => openCreatePatientModal()}
@@ -113,7 +110,7 @@ export const getServerSideProps = withPageAuth({
       const { data, error, count } = await supabaseServerClient(ctx)
         .from<AppointmentsResponse>('appointments')
         .select(
-          'startDate, endDate, patients ( firstName, lastName, phone, email), treatments ( name ), specialists ( firstName, lastName )',
+          'id, startDate, endDate, patients ( id, firstName, lastName, phone, email), treatments ( id, name ), specialists ( id, firstName, lastName ), notes, attended, appointments_states ( id, name )',
           { count: 'exact' },
         )
         .order('startDate', { ascending: false });

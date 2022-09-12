@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Calendar as BigCalendar,
   luxonLocalizer,
@@ -12,16 +12,7 @@ import { dehydrate, QueryClient } from '@tanstack/react-query';
 import { AppointmentsResponse } from '../types/appointment';
 import useAppointments from '../hooks/useAppointments/useAppointments';
 import Head from 'next/head';
-import { Box, Center, Grid, Group, SegmentedControl, Text } from '@mantine/core';
-import dayjs from 'dayjs';
-import { Tooltip } from '@mantine/core';
-
-// forwardRef function will allow to get root element ref
-// const MyBadge = forwardRef<HTMLDivElement, { color: string }>(({ color }, ref) => (
-//   <div ref={ref} color={color}>
-//     Badge
-//   </div>
-// ));
+import { Grid, Group, SegmentedControl, Text } from '@mantine/core';
 
 const defaultTZ = DateTime.local().zoneName;
 
@@ -38,6 +29,7 @@ const spMessages = {
     next: 'Después',
     today: 'Hoy',
     agenda: 'Agenda',
+    noEventsInRange: 'No hay eventos en este rango',
 
     showMore: (total: number) => `+${total} más`,
   },
@@ -45,13 +37,29 @@ const spMessages = {
 
 const EventComponent = (event: any) => {
   return (
-    // <Center>
     <Text size="sm" weight={500}>
-      {event.title}
+      {event.event.specialist}
     </Text>
-    // </Center>
   );
 };
+
+// const EventWrapperComponent = ({ event, children }: any) => {
+//   console.log(children, event);
+//   const newChildren = { ...children };
+//   const newChildrenProps = { ...newChildren.props };
+//   newChildrenProps.className = `${newChildrenProps.className} outline-none border-none  bg-red-500`;
+//   newChildren.props = { ...newChildrenProps };
+
+//   return (
+//     <Box
+//       sx={(theme) => ({
+//         backgroundColor: theme.colors.pink,
+//       })}
+//     >
+//       {`new text`}
+//     </Box>
+//   );
+// };
 
 export default function Calendar() {
   const [timezone, setTimezone] = useState(defaultTZ);
@@ -135,11 +143,13 @@ export default function Calendar() {
             culture={'es'}
             messages={spMessages.es}
             formats={formats}
+            step={30}
             min={new Date(1972, 0, 1, 7, 0, 0, 0)}
             max={new Date(2050, 0, 1, 22, 0, 0, 0)}
             components={{
               event: EventComponent,
               toolbar: CustomToolbar,
+              // eventWrapper: EventWrapperComponent,
             }}
           />
         </Grid.Col>
@@ -157,7 +167,7 @@ export const getServerSideProps = withPageAuth({
       const { data, error, count } = await supabaseServerClient(ctx)
         .from<AppointmentsResponse>('appointments')
         .select(
-          'startDate, endDate, patients ( firstName, lastName, phone, email), treatments ( name ), specialists ( firstName, lastName )',
+          'id, startDate, endDate, patients ( firstName, lastName, phone, email), treatments ( name ), specialists ( firstName, lastName ), notes, attended, appointments_states ( id, name )',
           { count: 'exact' },
         );
 

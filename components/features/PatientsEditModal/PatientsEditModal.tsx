@@ -49,7 +49,6 @@ export default function PatientsEditModal({ opened, handleModalState, data }: Mo
       onSuccess: (newPatient: Patient, values: FormValues) => {
         queryClient.setQueryData(['patients'], newPatient);
         // Show success notification
-        form.reset();
         showNotification({
           title: 'Exito!',
           message: 'Se modifico el paciente correctamente',

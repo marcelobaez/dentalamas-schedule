@@ -4,9 +4,11 @@ import {
   AutocompleteItem,
   Avatar,
   Button,
+  Checkbox,
   Grid,
   Group,
   Loader,
+  Modal,
   Select,
   Stack,
   Text,
@@ -15,19 +17,19 @@ import {
 } from '@mantine/core';
 import { Calendar, TimeRangeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
-import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
+import { useMediaQuery } from '@mantine/hooks';
 import { showNotification } from '@mantine/notifications';
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
-import { IconCheck, IconClock, IconUserPlus } from '@tabler/icons';
+import { IconClock, IconCheck } from '@tabler/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { forwardRef, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 import useSpecialists from '../../../hooks/useSpecialists/useSpecialists';
 import useTreatments from '../../../hooks/useTreatments/useTreatments';
+import useAppointmentsStates from '../../../hooks/useAppointmentStates/useAppointmentStates';
 import { AppointmentsResponse } from '../../../types/appointment';
-import { Patient } from '../../../types/patient';
 import { getAvatarFromFullName } from '../../../utils/getAvatarName';
+import { useModals } from '@mantine/modals';
 
 interface ItemProps extends React.ComponentPropsWithoutRef<'div'> {
   image: string;
@@ -42,12 +44,12 @@ interface AppointmentRequest {
   patient_id: number;
   treatment_id: number;
   specialist_id: number;
+  notes: string;
+  attended: boolean;
 }
 
 interface ModalProps {
-  onClose: () => void;
-  onCreatePatient: () => void;
-  // opened: boolean;
+  data: AppointmentsResponse;
 }
 
 const EXISTING_USERS = 'Pacientes encontrados';
@@ -76,80 +78,72 @@ const SelectItem = forwardRef<HTMLDivElement, ItemProps>(
 
 SelectItem.displayName = 'SelectItem';
 
-export default function AppointmentsCreateModal({ onClose, onCreatePatient }: ModalProps) {
+export default function AppointmentsEditModal({ data }: ModalProps) {
   const queryClient = useQueryClient();
-  const [emptyResults, setEmptyResults] = useState(false);
   const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
   // Time range state
-  const now = new Date();
-  const startTime = dayjs(now).add(1, 'hour').startOf('hour').toDate();
-  const endTime = dayjs(startTime).add(30, 'minutes').toDate();
+  const startTime = dayjs(data.startDate).toDate();
+  const endTime = dayjs(data.endDate).toDate();
   const [timeRange, setTimeRange] = useState<[Date, Date]>([startTime, endTime]);
 
   // State for autocomplete
-  const [value, setValue] = useState('');
-  const [debounced] = useDebouncedValue(value, 200, { leading: true });
+  const [value, setValue] = useState(`${data.patients.firstName} ${data.patients.lastName}`);
 
   //Get data for modal form
   const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
   const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
+  const { data: appointmentStateData, isLoading: isLoadingAppointmentsStates } =
+    useAppointmentsStates();
 
-  // Search query
-  const { data: searchResults, isFetching } = useQuery<Patient[]>(
-    ['searchPatients', debounced],
-    async () => {
-      const { data, error } = await supabaseClient
-        .from('patients')
-        .select('id, firstName, lastName, email, phone')
-        .ilike('lastName', `%${debounced}%`);
+  const modals = useModals();
 
-      if (error) {
-        throw new Error(`${error.message}: ${error.details}`);
-      }
-
-      return data;
-    },
-    {
-      enabled: Boolean(debounced),
-      onSuccess: (data) => {
-        data.length === 0 && setEmptyResults(true);
-      },
-    },
-  );
-
-  const [dayValue, setDayValue] = useState<Date | null>(new Date());
+  const [dayValue, setDayValue] = useState<Date>(() => dayjs(data.startDate).toDate());
 
   const form = useForm({
     initialValues: {
       patient: '',
-      specialist: '1',
-      treatment: '1',
+      specialist: '',
+      treatment: '',
       notes: '',
+      attended: false,
+      state: '',
     },
   });
+
+  useEffect(
+    () =>
+      form.setValues({
+        patient: String(data.patients.id),
+        specialist: String(data.specialists.id),
+        treatment: String(data.treatments.id),
+        notes: data.notes ?? '',
+        attended: data.attended,
+        state: data.appointments_states ? String(data.appointments_states.id) : '',
+      }),
+    [data],
+  );
 
   // Get inferred form values type
   type FormValues = typeof form.values;
 
   // Create appointment mutation
   const { mutate, isLoading: isMutating } = useMutation(
-    (values) => axios.post('/api/appointments', values),
+    (values) => axios.put(`/api/appointments/${data.id}`, values),
     {
       onSuccess: (newAppointment: AppointmentsResponse, values: AppointmentRequest) => {
         queryClient.setQueryData(['appointments'], newAppointment);
         // Show success notification
         showNotification({
           title: 'Exito!',
-          message: 'Se agendo el turno correctamente',
+          message: 'Se modificó el turno correctamente',
           color: 'green',
           icon: <IconCheck />,
         });
-        form.reset();
       },
       // Always refetch after error or success:
       onSettled: () => {
         queryClient.invalidateQueries(['appointments']);
-        onClose();
+        modals.closeModal('appointmentsEditModal');
       },
     },
   );
@@ -163,6 +157,8 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
       treatment_id: parseInt(values.treatment),
       specialist_id: parseInt(values.specialist),
       notes: values.notes,
+      attended: values.attended,
+      state_id: parseInt(values.state),
     };
 
     mutate(formData);
@@ -194,27 +190,11 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
     ]);
   };
 
-  const createPatientsData = () => {
-    let patientsList: AutocompleteItem[] = [];
-    if (searchResults) {
-      patientsList = searchResults.map((item) => ({
-        value: `${item.firstName} ${item.lastName}`,
-        label: `${item.firstName} ${item.lastName}`,
-        image: '',
-        description: item.phone,
-        group: EXISTING_USERS,
-        patient_id: item.id,
-      }));
-    }
-
-    return patientsList;
-  };
-
   return (
     <>
       {/* Modal content */}
-      {(isLoadingSpecialist || isLoadingTreatments) && <Loader />}
-      {treatmentsData && specialistsData && (
+      {(isLoadingSpecialist || isLoadingTreatments || isLoadingAppointmentsStates) && <Loader />}
+      {treatmentsData && specialistsData && appointmentStateData && (
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Grid>
             <Grid.Col sm={12} md={6}>
@@ -223,13 +203,21 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
                   itemComponent={SelectItem}
                   value={value}
                   maxDropdownHeight={400}
-                  data={createPatientsData()}
+                  data={[
+                    {
+                      value: `${data.patients.firstName} ${data.patients.lastName}`,
+                      label: `${data.patients.firstName} ${data.patients.lastName}`,
+                      image: '',
+                      description: data.patients.phone,
+                      group: EXISTING_USERS,
+                      patient_id: data.patients.id,
+                    },
+                  ]}
                   onChange={setValue}
-                  rightSection={isFetching ? <Loader size={16} /> : null}
                   label="Paciente"
-                  nothingFound={emptyResults ? 'No se encontraron pacientes' : ''}
                   placeholder="Busque por apellido del paciente"
                   filter={(value, item) => true}
+                  disabled
                   onItemSubmit={(item: AutocompleteItem) =>
                     form.setFieldValue('patient', item.patient_id)
                   }
@@ -238,16 +226,6 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
                     minWidth: '240px',
                   })}
                 />
-                <Tooltip label="Registrar nuevo paciente">
-                  <ActionIcon
-                    onClick={() => onCreatePatient()}
-                    size="lg"
-                    color="blue"
-                    variant="transparent"
-                  >
-                    <IconUserPlus />
-                  </ActionIcon>
-                </Tooltip>
               </Group>
             </Grid.Col>
             <Grid.Col sm={12} md={6}>
@@ -277,7 +255,7 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
               </Text>
               <Calendar
                 excludeDate={(date) => date.getDay() === 0}
-                minDate={new Date()}
+                // minDate={new Date()}
                 locale="es"
                 value={dayValue}
                 onChange={handleDayChange}
@@ -305,11 +283,28 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
                   }))}
                 />
                 <Textarea label="Notas" minRows={2} maxRows={4} {...form.getInputProps('notes')} />
+                <Checkbox
+                  label="Asistio al turno"
+                  {...form.getInputProps('attended', { type: 'checkbox' })}
+                />
+                <Select
+                  label="Estado"
+                  {...form.getInputProps('state')}
+                  placeholder="Seleccione el estado"
+                  onChange={(value: string) => form.setFieldValue('state', value)}
+                  data={appointmentStateData.map((item) => ({
+                    value: `${item.id}`,
+                    label: item.name,
+                  }))}
+                />
               </Stack>
             </Grid.Col>
             <Grid.Col span={12}>
               <Group position="right">
-                <Button variant="outline" onClick={() => onClose()}>
+                <Button
+                  variant="outline"
+                  onClick={() => modals.closeModal('appointmentsEditModal')}
+                >
                   Cancelar
                 </Button>
                 <Button loading={isMutating} type="submit">
