@@ -1,5 +1,16 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const withTM = require('next-transpile-modules')([
+  '@fullcalendar/common',
+  '@babel/preset-react',
+  '@fullcalendar/common',
+  '@fullcalendar/daygrid',
+  '@fullcalendar/interaction',
+  '@fullcalendar/react',
+  '@fullcalendar/timegrid',
+  '@fullcalendar/list',
+]);
+
+const nextConfig = withTM({
   reactStrictMode: true,
   swcMinify: true,
   async redirects() {
@@ -9,8 +20,8 @@ const nextConfig = {
         destination: '/calendar',
         permanent: true,
       },
-    ]
-  }
-}
+    ];
+  },
+});
 
-module.exports = nextConfig
+module.exports = nextConfig;

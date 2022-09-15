@@ -1,129 +1,168 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Calendar as BigCalendar,
-  luxonLocalizer,
-  View,
-  ToolbarProps,
-  NavigateAction,
-} from 'react-big-calendar';
-import { DateTime, Settings } from 'luxon';
 import { supabaseServerClient, withPageAuth } from '@supabase/auth-helpers-nextjs';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
 import { AppointmentsResponse } from '../types/appointment';
 import useAppointments from '../hooks/useAppointments/useAppointments';
 import Head from 'next/head';
-import { Grid, Group, SegmentedControl, Text } from '@mantine/core';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Center,
+  Container,
+  createStyles,
+  Grid,
+  Group,
+  LoadingOverlay,
+  MantineTheme,
+  Menu,
+  Paper,
+  ScrollArea,
+  Select,
+  Skeleton,
+  Stack,
+  Text,
+  Title,
+  useMantineTheme,
+} from '@mantine/core';
+import FullCalendar, { DateSelectArg, DatesSetArg, EventContentArg } from '@fullcalendar/react';
+import interactionPlugin from '@fullcalendar/interaction';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import listPlugin from '@fullcalendar/list';
+import esLocale from '@fullcalendar/core/locales/es';
+import { getAvatarFromFullName } from '../utils/getAvatarName';
+import useTreatments from '../hooks/useTreatments/useTreatments';
+import useSpecialists from '../hooks/useSpecialists/useSpecialists';
+import { IconCalendar, IconPlus } from '@tabler/icons';
+import { openContextModal, useModals } from '@mantine/modals';
+import { useMediaQuery } from '@mantine/hooks';
+import AppointmentsCreateModal from '../components/features/AppointmentsCreateModal/AppointmentsCreateModal';
+import { useState } from 'react';
+import { DateRangePicker, DateRangePickerValue } from '@mantine/dates';
+import 'dayjs/locale/es-mx';
+import dayjs from 'dayjs';
+import { appointmentsQuerySelect } from '../utils/constants';
+import {
+  AppointmentState,
+  stateColors,
+} from '../components/features/AppointmentsTable/AppointmentsTable';
 
-const defaultTZ = DateTime.local().zoneName;
+enum Specialist {
+  Talamas = 1,
+  Valiente,
+}
 
-const dateFormatOptions = { month: 'long', day: 'numeric' };
-const LOCALE = 'es-AR';
-
-const spMessages = {
-  es: {
-    week: 'Semana',
-    work_week: 'Semana de trabajo',
-    day: 'Día',
-    month: 'Mes',
-    previous: 'Atrás',
-    next: 'Después',
-    today: 'Hoy',
-    agenda: 'Agenda',
-    noEventsInRange: 'No hay eventos en este rango',
-
-    showMore: (total: number) => `+${total} más`,
-  },
+const specialistColors = {
+  [Specialist.Talamas]: '#868E96',
+  [Specialist.Valiente]: '#748FFC',
 };
 
-const EventComponent = (event: any) => {
+const useStyles = createStyles((theme) => ({
+  dropdown: {
+    // backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.blue[6],
+    backgroundColor: theme.colors.dark[4],
+    borderColor: theme.colors.dark[4],
+    color: theme.white,
+  },
+}));
+
+const renderEventContent = (
+  eventContent: EventContentArg,
+  theme: MantineTheme,
+  classes: Record<'dropdown', string>,
+) => {
+  const {
+    timeText,
+    event: {
+      title,
+      _def: {
+        extendedProps: { specialist, state, patient },
+      },
+    },
+  } = eventContent;
+
   return (
-    <Text size="sm" weight={500}>
-      {event.event.specialist}
-    </Text>
+    <Menu offset={1} withArrow withinPortal position="top" classNames={classes}>
+      <Menu.Target>
+        <Stack spacing={'xs'}>
+          <Text size={'xs'}>{timeText}</Text>
+          <Text size={'xs'} weight={500}>
+            {title}
+          </Text>
+        </Stack>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Stack spacing={'xs'} p="sm">
+          <Text size={'xs'}>{`${timeText} - ${title}`}</Text>
+          <Group spacing={'xs'}>
+            <Text size={'sm'} weight={500}>
+              {patient}
+            </Text>
+          </Group>
+          <Group spacing={'xs'}>
+            <Avatar radius={'xl'} size={20} color={theme.colors.dark[4]}>
+              {getAvatarFromFullName(specialist)}
+            </Avatar>
+            <Text size="sm">{specialist}</Text>
+            <Badge color={state ? stateColors[state.id as AppointmentState] : 'gray'}>
+              {state ? state.name : 'N/D'}
+            </Badge>
+          </Group>
+        </Stack>
+      </Menu.Dropdown>
+    </Menu>
   );
 };
 
-// const EventWrapperComponent = ({ event, children }: any) => {
-//   console.log(children, event);
-//   const newChildren = { ...children };
-//   const newChildrenProps = { ...newChildren.props };
-//   newChildrenProps.className = `${newChildrenProps.className} outline-none border-none  bg-red-500`;
-//   newChildren.props = { ...newChildrenProps };
-
-//   return (
-//     <Box
-//       sx={(theme) => ({
-//         backgroundColor: theme.colors.pink,
-//       })}
-//     >
-//       {`new text`}
-//     </Box>
-//   );
-// };
-
 export default function Calendar() {
-  const [timezone, setTimezone] = useState(defaultTZ);
-  const { data, isLoading } = useAppointments();
+  const theme = useMantineTheme();
+
+  const [selectedSp, setSelectedSp] = useState<string | null>('');
+  const [selectedTr, setSelectedTr] = useState<string | null>('');
+
+  const [dateRangeValue, setRangeValue] = useState<DateRangePickerValue>([
+    dayjs().startOf('week').add(1, 'day').toDate(),
+    dayjs().endOf('week').toDate(),
+  ]);
+
+  const { data, isLoading } = useAppointments({
+    fromDate: '',
+    toDate: '',
+    specialist: selectedSp,
+    treatments: selectedTr,
+  });
+
   const appointmentsData = data || [];
-  const [defaultView, setDefaultView] = useState<View>('week');
+  const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
+  const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
+  const modals = useModals();
+  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
+  const { classes } = useStyles();
 
-  const { defaultDate, getNow, localizer, myEvents, scrollToTime, formats } = useMemo(() => {
-    Settings.defaultZone = timezone;
-    return {
-      defaultDate: DateTime.local().toJSDate(),
-      getNow: () => DateTime.local().toJSDate(),
-      localizer: luxonLocalizer(DateTime),
-      myEvents: appointmentsData.map((item) => ({
-        title: `${item.treatments.name}`,
-        start: new Date(item.startDate),
-        end: new Date(item.endDate),
-        aproved: true,
-        treatment: item.treatments.name,
-        specialist: `${item.specialists.firstName} ${item.specialists.lastName}`,
-      })),
-      scrollToTime: new Date(),
-      formats: {
-        dayHeaderFormat: (date: Date, localizer: any) =>
-          date.toLocaleString(LOCALE, { month: 'long', day: 'numeric' }),
-        dayRangeHeaderFormat: (range: any, localizer: any) =>
-          `${range.start.toLocaleString(LOCALE, {
-            month: 'long',
-            day: 'numeric',
-          })} - ${range.end.toLocaleString(LOCALE, { month: 'long', day: 'numeric' })}`,
-      },
-    };
-  }, [timezone]);
+  const openCreatePatientModal = () => {
+    openContextModal({
+      modal: 'patientsCreate',
+      size: 460,
+      title: 'Registrar paciente',
+      innerProps: {},
+    });
+  };
 
-  useEffect(() => {
-    return () => {
-      Settings.defaultZone = defaultTZ; // reset to browser TZ on unmount
-    };
-  }, []);
-
-  const CustomToolbar = (props: ToolbarProps) => {
-    return (
-      <Group position="apart">
-        <SegmentedControl
-          onChange={(value: NavigateAction) => props.onNavigate(value)}
-          data={[
-            { label: 'Hoy', value: 'TODAY' },
-            { label: 'Anterior', value: 'PREV' },
-            { label: 'Siguiente', value: 'NEXT' },
-          ]}
+  const openCreateAppointmentModal = () => {
+    modals.openModal({
+      modalId: 'appointmentsCreateModal',
+      centered: true,
+      size: isMobile ? '100%' : '55%',
+      title: 'Registrar turno',
+      children: (
+        <AppointmentsCreateModal
+          onClose={() => {
+            modals.closeModal('appointmentsCreateModal');
+          }}
+          onCreatePatient={() => openCreatePatientModal()}
         />
-        <Text>{props.label}</Text>
-        <SegmentedControl
-          onChange={(value: View) => setDefaultView(value)}
-          value={defaultView}
-          data={[
-            // { label: 'Mes', value: 'month' },
-            { label: 'Semana', value: 'week' },
-            { label: 'Dia', value: 'day' },
-            { label: 'Agenda', value: 'agenda' },
-          ]}
-        />
-      </Group>
-    );
+      ),
+    });
   };
 
   return (
@@ -134,24 +173,91 @@ export default function Calendar() {
       </Head>
       <Grid>
         <Grid.Col span={12}>
-          <BigCalendar
-            defaultDate={defaultDate}
-            view={defaultView}
-            events={myEvents}
-            getNow={getNow}
-            localizer={localizer}
-            culture={'es'}
-            messages={spMessages.es}
-            formats={formats}
-            step={30}
-            min={new Date(1972, 0, 1, 7, 0, 0, 0)}
-            max={new Date(2050, 0, 1, 22, 0, 0, 0)}
-            components={{
-              event: EventComponent,
-              toolbar: CustomToolbar,
-              // eventWrapper: EventWrapperComponent,
-            }}
-          />
+          <Group position="apart" align={'center'}>
+            <Title order={2}>Calendario</Title>
+            <Group position="apart">
+              {specialistsData && treatmentsData && (
+                <>
+                  <Select
+                    value={selectedSp}
+                    onChange={setSelectedSp}
+                    data={[
+                      {
+                        label: 'Todos los especialistas',
+                        value: '',
+                      },
+                      ...specialistsData.map((item) => ({
+                        label: `${item.firstName} ${item.lastName}`,
+                        value: String(item.id),
+                      })),
+                    ]}
+                  />
+                  <Select
+                    value={selectedTr}
+                    onChange={setSelectedTr}
+                    data={[
+                      {
+                        label: 'Todos los tipos',
+                        value: '',
+                      },
+                      ...treatmentsData.map((item) => ({
+                        label: item.name,
+                        value: String(item.id),
+                      })),
+                    ]}
+                  />
+                </>
+              )}
+              <Button
+                leftIcon={<IconPlus size={16} />}
+                onClick={() => openCreateAppointmentModal()}
+              >
+                Nuevo turno
+              </Button>
+            </Group>
+          </Group>
+        </Grid.Col>
+        <Grid.Col span={12}>
+          <Paper shadow="xs" p="md" sx={{ height: 'calc(100vh - 170px)', position: 'relative' }}>
+            {isLoading && <LoadingOverlay visible />}
+            <ScrollArea sx={{ height: '100%' }}>
+              <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+                editable
+                selectable
+                events={appointmentsData.map((item) => ({
+                  id: String(item.id),
+                  title: item.treatments.name,
+                  start: new Date(item.startDate),
+                  end: new Date(item.endDate),
+                  color: specialistColors[item.specialists.id as Specialist],
+                  state: item.appointments_states
+                    ? {
+                        id: item.appointments_states.id,
+                        name: item.appointments_states.name,
+                      }
+                    : null,
+                  specialist: `${item.specialists.firstName} ${item.specialists.lastName}`,
+                  patient: `${item.patients.firstName} ${item.patients.lastName}`,
+                }))}
+                // select={(arg: DateSelectArg) => console.log(arg)}
+                // datesSet={(arg: DatesSetArg) => {
+                //   console.log(arg);
+                //   setRangeValue([arg.start, arg.end]);
+                // }}
+                locale={esLocale}
+                initialView={'timeGridWeek'}
+                slotMinTime="07:00:00"
+                slotMaxTime="23:00:00"
+                eventContent={(event) => renderEventContent(event, theme, classes)}
+                headerToolbar={{
+                  left: 'prev today next',
+                  center: 'title',
+                  right: 'dayGridMonth timeGridWeek timeGridDay',
+                }}
+              />
+            </ScrollArea>
+          </Paper>
         </Grid.Col>
       </Grid>
     </>
@@ -161,15 +267,33 @@ export default function Calendar() {
 export const getServerSideProps = withPageAuth({
   redirectTo: '/login',
   async getServerSideProps(ctx) {
-    // Get appointments
     const queryClient = new QueryClient();
-    await queryClient.prefetchQuery(['appointments'], async () => {
-      const { data, error, count } = await supabaseServerClient(ctx)
-        .from<AppointmentsResponse>('appointments')
-        .select(
-          'id, startDate, endDate, patients ( firstName, lastName, phone, email), treatments ( name ), specialists ( firstName, lastName ), notes, attended, appointments_states ( id, name )',
-          { count: 'exact' },
-        );
+
+    // Get appointments
+    // await queryClient.prefetchQuery(['appointments', '', '', '', ''], async () => {
+    //   const { data, error, count } = await supabaseServerClient(ctx)
+    //     .from<AppointmentsResponse>('appointments')
+    //     .select(appointmentsQuerySelect, { count: 'exact' });
+
+    //   if (error) throw new Error(`${error.message}: ${error.details}`);
+
+    //   return data;
+    // });
+
+    await queryClient.prefetchQuery(['treatments'], async () => {
+      // Get treatments list
+      const { data, error } = await supabaseServerClient(ctx).from('treatments').select('id, name');
+
+      if (error) throw new Error(`${error.message}: ${error.details}`);
+
+      return data;
+    });
+
+    await queryClient.prefetchQuery(['specialists'], async () => {
+      // Get treatments list
+      const { data, error } = await supabaseServerClient(ctx)
+        .from('specialists')
+        .select('id, firstName, lastName, title');
 
       if (error) throw new Error(`${error.message}: ${error.details}`);
 

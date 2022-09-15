@@ -5,7 +5,9 @@ import {
   Box,
   CheckIcon,
   ColorSwatch,
+  createStyles,
   Group,
+  ScrollArea,
   Stack,
   Table,
   Text,
@@ -16,6 +18,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { useModals } from '@mantine/modals';
 import { IconEdit, IconCheck, IconHourglass, IconBan, IconUser } from '@tabler/icons';
 import { DateTime } from 'luxon';
+import { useState } from 'react';
 import { AppointmentsResponse } from '../../../types/appointment';
 import { getAvatarFromNames } from '../../../utils/getAvatarName';
 import AppointmentsEditModal from '../AppointmentsEditModal/AppointmentsEditModal';
@@ -38,7 +41,7 @@ const stateIcons = {
   [AppointmentState.Rejected]: <IconUser width={10} />,
 };
 
-const stateColors = {
+export const stateColors = {
   [AppointmentState.Approved]: 'green',
   [AppointmentState.Pending]: '#CED4DA', //gray.4 in theme. TODO: find a way to change it to named index
   [AppointmentState.Cancelled]: 'red',
@@ -48,8 +51,8 @@ const stateColors = {
 const getSwatchColorComponent = (state: AppointmentState, value: string) => {
   return (
     <Group spacing={'xs'}>
-      <ColorSwatch size={20} component="button" color={stateColors[state]} sx={{ color: '#fff' }}>
-        {stateIcons[state]}
+      <ColorSwatch size={16} color={stateColors[state]} sx={{ color: '#fff' }}>
+        {/* {stateIcons[state]} */}
       </ColorSwatch>
       <Text>{value}</Text>
     </Group>
@@ -69,10 +72,50 @@ const mapAttendedStateToMsg = (state: null | boolean) => {
   }
 };
 
+const mapAttendedStateToColor = (state: null | boolean) => {
+  switch (state) {
+    case null:
+      return 'gray';
+    case true:
+      return 'green';
+    case false:
+      return 'red';
+    default:
+      return 'gray';
+  }
+};
+
+const useStyles = createStyles((theme) => ({
+  header: {
+    position: 'sticky',
+    top: 0,
+    backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[7] : theme.white,
+    transition: 'box-shadow 150ms ease',
+    zIndex: 10,
+
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderBottom: `1px solid ${
+        theme.colorScheme === 'dark' ? theme.colors.dark[3] : theme.colors.gray[2]
+      }`,
+    },
+  },
+
+  scrolled: {
+    boxShadow: theme.shadows.sm,
+  },
+}));
+
 export default function AppointmentsTable({ data }: TableProps) {
   const theme = useMantineTheme();
   const modals = useModals();
   const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
+  const { classes, cx } = useStyles();
+  const [scrolled, setScrolled] = useState(false);
 
   const openEditAppointmentModal = (item: AppointmentsResponse) => {
     modals.openModal({
@@ -85,9 +128,9 @@ export default function AppointmentsTable({ data }: TableProps) {
   };
 
   return (
-    <>
+    <ScrollArea sx={{ height: '100%' }} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
       <Table highlightOnHover sx={{ minWidth: 800 }} verticalSpacing="xs">
-        <thead>
+        <thead className={cx(classes.header, { [classes.scrolled]: scrolled })}>
           <tr>
             <th>Turno</th>
             <th>Paciente</th>
@@ -133,7 +176,14 @@ export default function AppointmentsTable({ data }: TableProps) {
                 </td>
                 <td>
                   <Group spacing="sm">
-                    <Avatar color="pink" size={26} radius={26}>
+                    <Avatar
+                      color="pink"
+                      size={26}
+                      radius={26}
+                      sx={(th) => ({
+                        position: 'initial',
+                      })}
+                    >
                       {getAvatarFromNames(item.specialists.firstName, item.specialists.lastName)}
                     </Avatar>
                     <Text size="sm" weight={500}>
@@ -152,11 +202,19 @@ export default function AppointmentsTable({ data }: TableProps) {
                       )
                     : 'N/D'}
                 </td>
-                <td>{mapAttendedStateToMsg(item.attended)}</td>
+                <td>
+                  <Badge color={mapAttendedStateToColor(item.attended)}>
+                    {mapAttendedStateToMsg(item.attended)}
+                  </Badge>
+                </td>
                 <td>
                   <Group>
                     <Tooltip label="Editar paciente">
-                      <ActionIcon>
+                      <ActionIcon
+                        sx={(th) => ({
+                          position: 'initial',
+                        })}
+                      >
                         <IconEdit size={18} onClick={() => openEditAppointmentModal(item)} />
                       </ActionIcon>
                     </Tooltip>
@@ -173,6 +231,6 @@ export default function AppointmentsTable({ data }: TableProps) {
           )}
         </tbody>
       </Table>
-    </>
+    </ScrollArea>
   );
 }

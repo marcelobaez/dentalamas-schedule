@@ -78,7 +78,7 @@ export default function Patients() {
             <Text weight={600} size={'xl'}>
               Pacientes
             </Text>
-            <Button leftIcon={<IconUserPlus />} onClick={() => openCreateModal()}>
+            <Button leftIcon={<IconUserPlus size={16} />} onClick={() => openCreateModal()}>
               Nuevo paciente
             </Button>
           </Group>

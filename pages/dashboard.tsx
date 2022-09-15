@@ -1,7 +1,21 @@
-import { RingProgress, Text, SimpleGrid, Paper, Center, Group } from '@mantine/core';
+import {
+  RingProgress,
+  Text,
+  Paper,
+  Center,
+  Group,
+  Grid,
+  Title,
+  Stack,
+  createStyles,
+} from '@mantine/core';
+import { DateRangePicker, DateRangePickerValue } from '@mantine/dates';
 import { withPageAuth } from '@supabase/auth-helpers-nextjs';
-import { IconArrowUpRight, IconArrowDownRight } from '@tabler/icons';
-import { GetServerSideProps } from 'next';
+import { IconArrowUpRight, IconArrowDownRight, IconCalendar } from '@tabler/icons';
+import dayjs from 'dayjs';
+import Head from 'next/head';
+import { useState } from 'react';
+import useDashboard from '../hooks/useDashboard/useDashboard';
 
 interface StatsRingProps {
   data: {
@@ -18,56 +32,145 @@ const icons = {
   down: IconArrowDownRight,
 };
 
-export default function Dashboard({ data }: StatsRingProps) {
-  const stats = data.map((stat) => {
-    const Icon = icons[stat.icon];
-    return (
-      <Paper withBorder radius="md" p="xs" key={stat.label}>
-        <Group>
-          <RingProgress
-            size={80}
-            roundCaps
-            thickness={8}
-            sections={[{ value: stat.progress, color: stat.color }]}
-            label={
-              <Center>
-                <Icon size={22} stroke={1.5} />
-              </Center>
-            }
-          />
+const useStyles = createStyles((theme) => ({
+  root: {
+    padding: theme.spacing.xl * 1.5,
+  },
+}));
 
-          <div>
-            <Text color="dimmed" size="xs" transform="uppercase" weight={700}>
-              {stat.label}
-            </Text>
-            <Text weight={700} size="xl">
-              {stat.stats}
-            </Text>
-          </div>
-        </Group>
-      </Paper>
-    );
+export default function Dashboard() {
+  const { classes } = useStyles();
+  const [dateRangeValue, setRangeValue] = useState<DateRangePickerValue>([
+    dayjs().startOf('week').add(1, 'day').toDate(),
+    dayjs().endOf('week').toDate(),
+  ]);
+
+  const { data: dashboardData, isLoading } = useDashboard({
+    fromDate: dayjs(dateRangeValue[0]).format(),
+    toDate: dayjs(dateRangeValue[1]).format(),
   });
 
   return (
-    <SimpleGrid cols={3} breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
-      {stats}
-    </SimpleGrid>
+    <>
+      <Head>
+        <title>Inicio</title>
+        <meta name="description" content="Calendario de turnos" />
+      </Head>
+      <Grid>
+        <Grid.Col span={12}>
+          <Group position="apart" align={'center'}>
+            <Title order={2}>Inicio</Title>
+            <DateRangePicker
+              sx={(th) => ({ minWidth: '350px' })}
+              icon={<IconCalendar size={16} />}
+              placeholder="Elija el rango de fechas"
+              value={dateRangeValue}
+              onChange={(value: DateRangePickerValue) => {
+                if (value[1]) setRangeValue(value);
+              }}
+              locale="es-mx"
+            />
+          </Group>
+        </Grid.Col>
+        <Grid.Col span={12}>
+          <Group position="apart">
+            <Stack spacing={'sm'}>
+              <Title order={1}>Bienvenido/a</Title>
+              <Text color="dimmed" mt="md">
+                Aqui podra ver las estadisticas de asistencia de sus pacientes
+              </Text>
+            </Stack>
+          </Group>
+        </Grid.Col>
+        <Grid.Col span={4}>
+          {dashboardData && (
+            <Paper withBorder p="md" radius="md">
+              <Group>
+                <RingProgress
+                  size={80}
+                  roundCaps
+                  thickness={8}
+                  sections={[{ value: 50, color: 'green' }]}
+                  label={
+                    <Center>
+                      <IconArrowUpRight size={22} stroke={1.5} />
+                    </Center>
+                  }
+                />
+
+                <div>
+                  <Text color="dimmed" size="xs" transform="uppercase" weight={700}>
+                    Pacientes atendidos
+                  </Text>
+                  <Text weight={700} size="xl">
+                    {dashboardData.data.attendedCount}
+                  </Text>
+                </div>
+              </Group>
+            </Paper>
+          )}
+        </Grid.Col>
+        <Grid.Col span={4}>
+          {dashboardData && (
+            <Paper withBorder p="md" radius="md">
+              <Group>
+                <RingProgress
+                  size={80}
+                  roundCaps
+                  thickness={8}
+                  sections={[{ value: 50, color: 'blue' }]}
+                  label={
+                    <Center>
+                      <IconArrowUpRight size={22} stroke={1.5} />
+                    </Center>
+                  }
+                />
+
+                <div>
+                  <Text color="dimmed" size="xs" transform="uppercase" weight={700}>
+                    Turnos aprobados
+                  </Text>
+                  <Text weight={700} size="xl">
+                    {dashboardData.data.aprobedCount}
+                  </Text>
+                </div>
+              </Group>
+            </Paper>
+          )}
+        </Grid.Col>
+        <Grid.Col span={4}>
+          {dashboardData && (
+            <Paper withBorder p="md" radius="md">
+              <Group>
+                <RingProgress
+                  size={80}
+                  roundCaps
+                  thickness={8}
+                  sections={[{ value: 50, color: 'red' }]}
+                  label={
+                    <Center>
+                      <IconArrowUpRight size={22} stroke={1.5} />
+                    </Center>
+                  }
+                />
+
+                <div>
+                  <Text color="dimmed" size="xs" transform="uppercase" weight={700}>
+                    Turnos cancelados
+                  </Text>
+                  <Text weight={700} size="xl">
+                    {dashboardData.data.cancelledCount}
+                  </Text>
+                </div>
+              </Group>
+            </Paper>
+          )}
+        </Grid.Col>
+      </Grid>
+    </>
   );
 }
 
-export const getServerSideProps = withPageAuth({ redirectTo: '/login', async getServerSideProps(ctx) { 
-  return {
-    props: {
-      data: [
-        {
-          label: 'test',
-          stats: '11',
-          progress: 50,
-          color: 'red',
-          icon: 'up',
-        },
-      ],
-    },
-  }
-}});
+export const getServerSideProps = withPageAuth({
+  redirectTo: '/login',
+});

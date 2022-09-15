@@ -9,8 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@babel/preset-react": "^7.18.6",
     "@emotion/react": "^11.10.0",
     "@emotion/server": "^11.10.0",
+    "@fullcalendar/core": "^5.11.3",
+    "@fullcalendar/daygrid": "^5.11.3",
+    "@fullcalendar/interaction": "^5.11.3",
+    "@fullcalendar/list": "^5.11.3",
+    "@fullcalendar/react": "^5.11.2",
+    "@fullcalendar/timegrid": "^5.11.3",
     "@mantine/core": "^5.1.6",
     "@mantine/dates": "^5.1.6",
     "@mantine/form": "^5.1.6",
@@ -30,16 +37,14 @@
     "jotai": "^1.8.1",
     "luxon": "^3.0.1",
     "next": "12.2.5",
+    "next-transpile-modules": "^9.0.0",
     "react": "^17.0.2",
-    "react-big-calendar": "^1.5.0",
-    "react-dom": "^17.0.2",
-    "twilio": "^3.81.0"
+    "react-dom": "^17.0.2"
   },
   "devDependencies": {
     "@types/luxon": "^3.0.0",
     "@types/node": "18.7.5",
     "@types/react": "18.0.17",
-    "@types/react-big-calendar": "^0.38.1",
     "@types/react-dom": "18.0.6",
     "eslint": "8.22.0",
     "eslint-config-next": "12.2.5",

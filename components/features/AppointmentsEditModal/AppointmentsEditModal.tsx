@@ -9,6 +9,7 @@ import {
   Group,
   Loader,
   Modal,
+  Radio,
   Select,
   Stack,
   Text,
@@ -45,7 +46,7 @@ interface AppointmentRequest {
   treatment_id: number;
   specialist_id: number;
   notes: string;
-  attended: boolean;
+  attended: boolean | null;
 }
 
 interface ModalProps {
@@ -78,6 +79,41 @@ const SelectItem = forwardRef<HTMLDivElement, ItemProps>(
 
 SelectItem.displayName = 'SelectItem';
 
+const getStringValueFromBoolean = (state: boolean | null) => {
+  switch (state) {
+    case null:
+      return '';
+    case true:
+      return 'SI';
+    case false:
+      return 'NO';
+    default:
+      return '';
+  }
+};
+
+const getBooleanFromString = (value: string) => {
+  switch (value) {
+    case null:
+      return null;
+    case 'SI':
+      return true;
+    case 'NO':
+      return false;
+    default:
+      return null;
+  }
+};
+
+interface FormValues {
+  patient: string;
+  specialist: string;
+  treatment: string;
+  notes: string;
+  attended: boolean | null;
+  state: string;
+}
+
 export default function AppointmentsEditModal({ data }: ModalProps) {
   const queryClient = useQueryClient();
   const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
@@ -85,6 +121,7 @@ export default function AppointmentsEditModal({ data }: ModalProps) {
   const startTime = dayjs(data.startDate).toDate();
   const endTime = dayjs(data.endDate).toDate();
   const [timeRange, setTimeRange] = useState<[Date, Date]>([startTime, endTime]);
+  const [attendance, setAttendance] = useState(() => getStringValueFromBoolean(data.attended));
 
   // State for autocomplete
   const [value, setValue] = useState(`${data.patients.firstName} ${data.patients.lastName}`);
@@ -99,13 +136,13 @@ export default function AppointmentsEditModal({ data }: ModalProps) {
 
   const [dayValue, setDayValue] = useState<Date>(() => dayjs(data.startDate).toDate());
 
-  const form = useForm({
+  const form = useForm<FormValues>({
     initialValues: {
       patient: '',
       specialist: '',
       treatment: '',
       notes: '',
-      attended: false,
+      attended: null,
       state: '',
     },
   });
@@ -122,9 +159,6 @@ export default function AppointmentsEditModal({ data }: ModalProps) {
       }),
     [data],
   );
-
-  // Get inferred form values type
-  type FormValues = typeof form.values;
 
   // Create appointment mutation
   const { mutate, isLoading: isMutating } = useMutation(
@@ -283,10 +317,17 @@ export default function AppointmentsEditModal({ data }: ModalProps) {
                   }))}
                 />
                 <Textarea label="Notas" minRows={2} maxRows={4} {...form.getInputProps('notes')} />
-                <Checkbox
-                  label="Asistio al turno"
-                  {...form.getInputProps('attended', { type: 'checkbox' })}
-                />
+                <Radio.Group
+                  value={attendance}
+                  onChange={(value: string) => {
+                    form.setFieldValue('attended', getBooleanFromString(value));
+                    setAttendance(value);
+                  }}
+                  label="Asistio"
+                >
+                  <Radio value="SI" label="Si" />
+                  <Radio value="NO" label="No" />
+                </Radio.Group>
                 <Select
                   label="Estado"
                   {...form.getInputProps('state')}
@@ -308,7 +349,7 @@ export default function AppointmentsEditModal({ data }: ModalProps) {
                   Cancelar
                 </Button>
                 <Button loading={isMutating} type="submit">
-                  Agendar
+                  Actualizar
                 </Button>
               </Group>
             </Grid.Col>
