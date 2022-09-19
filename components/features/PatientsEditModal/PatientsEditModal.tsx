@@ -6,10 +6,9 @@ import axios, { AxiosError } from 'axios';
 import { useQueryClient, useMutation, QueryClient } from '@tanstack/react-query';
 import { Patient } from '../../../types/patient';
 import { useEffect } from 'react';
+import { useModals } from '@mantine/modals';
 
 interface ModalProps {
-  handleModalState: (state: boolean) => void;
-  opened: boolean;
   data: Patient;
 }
 
@@ -17,8 +16,9 @@ interface ErrorResponse {
   message: string;
 }
 
-export default function PatientsEditModal({ opened, handleModalState, data }: ModalProps) {
+export default function PatientsEditModal({ data }: ModalProps) {
   const queryClient = useQueryClient();
+  const modals = useModals();
 
   const form = useForm({
     initialValues: {
@@ -65,22 +65,13 @@ export default function PatientsEditModal({ opened, handleModalState, data }: Mo
       // Always refetch after error or success:
       onSettled: () => {
         queryClient.invalidateQueries(['patients']);
-        handleModalState(false);
+        modals.closeModal('patientsEditModal');
       },
     },
   );
 
   return (
-    <Modal
-      size={460}
-      opened={opened}
-      onClose={() => handleModalState(false)}
-      title={
-        <Text size="md" weight={600}>
-          {`Editar paciente ${data.firstName} ${data.lastName}`}
-        </Text>
-      }
-    >
+    <>
       {/* Modal content */}
       <form onSubmit={form.onSubmit((values) => addPatientMutation.mutate(values))}>
         <Stack>
@@ -113,7 +104,7 @@ export default function PatientsEditModal({ opened, handleModalState, data }: Mo
             {...form.getInputProps('email')}
           />
           <Group position="right" mt="md">
-            <Button variant="outline" onClick={() => handleModalState(false)}>
+            <Button variant="outline" onClick={() => modals.closeModal('patientsEditModal')}>
               Cancelar
             </Button>
             <Button loading={addPatientMutation.isLoading} type="submit">
@@ -122,6 +113,6 @@ export default function PatientsEditModal({ opened, handleModalState, data }: Mo
           </Group>
         </Stack>
       </form>
-    </Modal>
+    </>
   );
 }

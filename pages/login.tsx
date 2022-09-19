@@ -82,7 +82,7 @@ export default function LoginPage() {
     if (user) {
       router.push('/calendar');
     }
-  }, [isLoading, user]);
+  }, [isLoading, user, router]);
 
   const handleLogin = async (values: FormValues) => {
     try {

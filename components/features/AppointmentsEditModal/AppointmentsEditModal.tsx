@@ -1,3 +1,5 @@
+import axios from 'axios';
+import dayjs from 'dayjs';
 import {
   ActionIcon,
   Autocomplete,
@@ -18,35 +20,23 @@ import {
 } from '@mantine/core';
 import { Calendar, TimeRangeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
-import { useMediaQuery } from '@mantine/hooks';
 import { showNotification } from '@mantine/notifications';
 import { IconClock, IconCheck } from '@tabler/icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-import dayjs from 'dayjs';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { forwardRef, useEffect, useState } from 'react';
 import useSpecialists from '../../../hooks/useSpecialists/useSpecialists';
 import useTreatments from '../../../hooks/useTreatments/useTreatments';
 import useAppointmentsStates from '../../../hooks/useAppointmentStates/useAppointmentStates';
-import { AppointmentsResponse } from '../../../types/appointment';
+import { AppointmentsResponse, AppointmentRequest } from '../../../types/appointment';
 import { getAvatarFromFullName } from '../../../utils/getAvatarName';
 import { useModals } from '@mantine/modals';
+import { getBooleanFromString, getStringValueFromBoolean } from '../../../utils/forms';
 
 interface ItemProps extends React.ComponentPropsWithoutRef<'div'> {
   image: string;
   label: string;
   description: string;
   group?: string;
-}
-
-interface AppointmentRequest {
-  startDate: Date;
-  endDate: Date;
-  patient_id: number;
-  treatment_id: number;
-  specialist_id: number;
-  notes: string;
-  attended: boolean | null;
 }
 
 interface ModalProps {
@@ -79,32 +69,6 @@ const SelectItem = forwardRef<HTMLDivElement, ItemProps>(
 
 SelectItem.displayName = 'SelectItem';
 
-const getStringValueFromBoolean = (state: boolean | null) => {
-  switch (state) {
-    case null:
-      return '';
-    case true:
-      return 'SI';
-    case false:
-      return 'NO';
-    default:
-      return '';
-  }
-};
-
-const getBooleanFromString = (value: string) => {
-  switch (value) {
-    case null:
-      return null;
-    case 'SI':
-      return true;
-    case 'NO':
-      return false;
-    default:
-      return null;
-  }
-};
-
 interface FormValues {
   patient: string;
   specialist: string;
@@ -116,7 +80,6 @@ interface FormValues {
 
 export default function AppointmentsEditModal({ data }: ModalProps) {
   const queryClient = useQueryClient();
-  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
   // Time range state
   const startTime = dayjs(data.startDate).toDate();
   const endTime = dayjs(data.endDate).toDate();

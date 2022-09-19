@@ -129,7 +129,7 @@ export default function Calendar() {
     fromDate: '',
     toDate: '',
     specialist: selectedSp,
-    treatments: selectedTr,
+    treatment: selectedTr,
   });
 
   const appointmentsData = data || [];

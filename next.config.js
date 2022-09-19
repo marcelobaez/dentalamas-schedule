@@ -17,7 +17,7 @@ const nextConfig = withTM({
     return [
       {
         source: '/',
-        destination: '/calendar',
+        destination: '/dashboard',
         permanent: true,
       },
     ];

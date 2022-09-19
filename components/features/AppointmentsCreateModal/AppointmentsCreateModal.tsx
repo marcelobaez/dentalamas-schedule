@@ -7,6 +7,7 @@ import {
   Grid,
   Group,
   Loader,
+  Radio,
   Select,
   Stack,
   Text,
@@ -23,10 +24,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { forwardRef, useState } from 'react';
+import useAppointmentsStates from '../../../hooks/useAppointmentStates/useAppointmentStates';
+import { useIsMobile } from '../../../hooks/useIsMobile/useIsMobile';
 import useSpecialists from '../../../hooks/useSpecialists/useSpecialists';
 import useTreatments from '../../../hooks/useTreatments/useTreatments';
-import { AppointmentsResponse } from '../../../types/appointment';
+import { AppoinmentFormValues, AppointmentsResponse } from '../../../types/appointment';
 import { Patient } from '../../../types/patient';
+import { getBooleanFromString } from '../../../utils/forms';
 import { getAvatarFromFullName } from '../../../utils/getAvatarName';
 
 interface ItemProps extends React.ComponentPropsWithoutRef<'div'> {
@@ -47,7 +51,6 @@ interface AppointmentRequest {
 interface ModalProps {
   onClose: () => void;
   onCreatePatient: () => void;
-  // opened: boolean;
 }
 
 const EXISTING_USERS = 'Pacientes encontrados';
@@ -79,7 +82,8 @@ SelectItem.displayName = 'SelectItem';
 export default function AppointmentsCreateModal({ onClose, onCreatePatient }: ModalProps) {
   const queryClient = useQueryClient();
   const [emptyResults, setEmptyResults] = useState(false);
-  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
+  const isMobile = useIsMobile();
+  const [attendance, setAttendance] = useState('');
   // Time range state
   const now = new Date();
   const startTime = dayjs(now).add(1, 'hour').startOf('hour').toDate();
@@ -93,6 +97,8 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
   //Get data for modal form
   const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
   const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
+  const { data: appointmentStateData, isLoading: isLoadingAppointmentsStates } =
+    useAppointmentsStates();
 
   // Search query
   const { data: searchResults, isFetching } = useQuery<Patient[]>(
@@ -119,12 +125,14 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
 
   const [dayValue, setDayValue] = useState<Date | null>(new Date());
 
-  const form = useForm({
+  const form = useForm<AppoinmentFormValues>({
     initialValues: {
       patient: '',
       specialist: '1',
       treatment: '1',
       notes: '',
+      attended: null,
+      state: '2',
     },
   });
 
@@ -163,6 +171,8 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
       treatment_id: parseInt(values.treatment),
       specialist_id: parseInt(values.specialist),
       notes: values.notes,
+      attended: values.attended,
+      state_id: parseInt(values.state),
     };
 
     mutate(formData);
@@ -213,8 +223,8 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
   return (
     <>
       {/* Modal content */}
-      {(isLoadingSpecialist || isLoadingTreatments) && <Loader />}
-      {treatmentsData && specialistsData && (
+      {(isLoadingSpecialist || isLoadingTreatments || isLoadingAppointmentsStates) && <Loader />}
+      {treatmentsData && specialistsData && appointmentStateData && (
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Grid>
             <Grid.Col sm={12} md={6}>
@@ -305,6 +315,27 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
                   }))}
                 />
                 <Textarea label="Notas" minRows={2} maxRows={4} {...form.getInputProps('notes')} />
+                <Radio.Group
+                  value={attendance}
+                  onChange={(value: string) => {
+                    form.setFieldValue('attended', getBooleanFromString(value));
+                    setAttendance(value);
+                  }}
+                  label="Asistio"
+                >
+                  <Radio value="SI" label="Si" />
+                  <Radio value="NO" label="No" />
+                </Radio.Group>
+                <Select
+                  label="Estado"
+                  {...form.getInputProps('state')}
+                  placeholder="Seleccione el estado"
+                  onChange={(value: string) => form.setFieldValue('state', value)}
+                  data={appointmentStateData.map((item) => ({
+                    value: `${item.id}`,
+                    label: item.name,
+                  }))}
+                />
               </Stack>
             </Grid.Col>
             <Grid.Col span={12}>

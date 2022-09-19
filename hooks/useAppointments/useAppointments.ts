@@ -7,22 +7,24 @@ import { appointmentsQuerySelect } from '../../utils/constants';
 interface AppointmentParams {
   fromDate: string | null;
   toDate: string | null;
-  specialist: string | null;
-  treatments: string | null;
+  specialist?: string | null;
+  treatment?: string | null;
+  top?: number;
 }
 
 export default function useAppointments({
   fromDate,
   toDate,
-  treatments,
-  specialist,
+  treatment = '',
+  specialist = '',
+  top,
 }: AppointmentParams) {
   const { user, error } = useUser();
   return useQuery(
-    ['appointments', fromDate, toDate, specialist, treatments],
+    ['appointments', fromDate, toDate, specialist, treatment, top],
     async () => {
       const filterBySpecialist = specialist;
-      const filterByTreatment = treatments;
+      const filterByTreatment = treatment;
 
       let query = supabaseClient
         .from('appointments')
@@ -34,6 +36,8 @@ export default function useAppointments({
       if (filterBySpecialist) query = query.in('specialists.id', [filterBySpecialist]);
 
       if (filterByTreatment) query = query.in('treatments.id', [filterByTreatment]);
+
+      if (top) query = query.limit(top);
 
       const { data, error } = await query;
 

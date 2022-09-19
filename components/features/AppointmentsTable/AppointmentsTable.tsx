@@ -14,11 +14,14 @@ import {
   Tooltip,
   useMantineTheme,
 } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
-import { useModals } from '@mantine/modals';
-import { IconEdit, IconCheck, IconHourglass, IconBan, IconUser } from '@tabler/icons';
+import { openConfirmModal, useModals } from '@mantine/modals';
+import { showNotification } from '@mantine/notifications';
+import { IconEdit, IconCheck, IconHourglass, IconBan, IconUser, IconTrash } from '@tabler/icons';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { DateTime } from 'luxon';
 import { useState } from 'react';
+import { useIsMobile } from '../../../hooks/useIsMobile/useIsMobile';
 import { AppointmentsResponse } from '../../../types/appointment';
 import { getAvatarFromNames } from '../../../utils/getAvatarName';
 import AppointmentsEditModal from '../AppointmentsEditModal/AppointmentsEditModal';
@@ -111,13 +114,36 @@ const useStyles = createStyles((theme) => ({
 }));
 
 export default function AppointmentsTable({ data }: TableProps) {
+  const queryClient = useQueryClient();
   const theme = useMantineTheme();
   const modals = useModals();
-  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
+  const isMobile = useIsMobile();
   const { classes, cx } = useStyles();
   const [scrolled, setScrolled] = useState(false);
 
-  const openEditAppointmentModal = (item: AppointmentsResponse) => {
+  // Create appointment mutation
+  const { mutate, isLoading: isMutating } = useMutation(
+    (id) => axios.delete(`/api/appointments/${id}`),
+    {
+      onSuccess: (newAppointment: AppointmentsResponse, id: string) => {
+        queryClient.setQueryData(['appointments'], newAppointment);
+        // Show success notification
+        showNotification({
+          title: 'Exito!',
+          message: 'Se elimino el turno correctamente',
+          color: 'green',
+          icon: <IconCheck />,
+        });
+      },
+      // Always refetch after error or success:
+      onSettled: () => {
+        queryClient.invalidateQueries(['appointments']);
+        modals.closeModal('appointmentsEditModal');
+      },
+    },
+  );
+
+  const openEditModal = (item: AppointmentsResponse) => {
     modals.openModal({
       modalId: 'appointmentsEditModal',
       centered: true,
@@ -126,6 +152,19 @@ export default function AppointmentsTable({ data }: TableProps) {
       children: <AppointmentsEditModal data={item} />,
     });
   };
+
+  const openDeleteModal = (id: string) =>
+    openConfirmModal({
+      title: 'Eliminar el turno',
+      children: (
+        <Text size="sm">Seguro que quiere eliminar el turno? Esta accion no es reversible</Text>
+      ),
+      centered: true,
+      labels: { confirm: 'Eliminar turno', cancel: 'Cancelar' },
+      confirmProps: { color: 'red' },
+      onCancel: () => console.log('Cancel'),
+      onConfirm: () => mutate(id),
+    });
 
   return (
     <ScrollArea sx={{ height: '100%' }} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
@@ -209,13 +248,18 @@ export default function AppointmentsTable({ data }: TableProps) {
                 </td>
                 <td>
                   <Group>
-                    <Tooltip label="Editar paciente">
+                    <Tooltip label="Editar turno">
                       <ActionIcon
                         sx={(th) => ({
                           position: 'initial',
                         })}
                       >
-                        <IconEdit size={18} onClick={() => openEditAppointmentModal(item)} />
+                        <IconEdit size={18} onClick={() => openEditModal(item)} />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Eliminar turno">
+                      <ActionIcon onClick={() => openDeleteModal(String(item.id))} color="red">
+                        <IconTrash size={18} stroke={1.5} />
                       </ActionIcon>
                     </Tooltip>
                   </Group>

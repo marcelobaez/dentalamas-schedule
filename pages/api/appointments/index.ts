@@ -1,10 +1,7 @@
 import { withApiAuth, supabaseServerClient, getUser } from '@supabase/auth-helpers-nextjs';
 
 export default withApiAuth(async function ProtectedRoute(req, res) {
-  const {
-    query: { id, name },
-    method,
-  } = req;
+  const { method } = req;
 
   switch (method) {
     case 'POST':
@@ -13,7 +10,6 @@ export default withApiAuth(async function ProtectedRoute(req, res) {
       const body = {
         ...req.body,
         user_id: user.id,
-        state_id: 2,
       };
 
       const { data, error } = await supabaseServerClient({ req, res })

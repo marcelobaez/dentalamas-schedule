@@ -10,7 +10,9 @@ export default function usePatients() {
     async () => {
       const { data, error } = await supabaseClient
         .from('patients')
-        .select('id, firstName, lastName, phone, email, created_at');
+        .select('id, firstName, lastName, phone, email, created_at')
+        .order('lastName', { ascending: true })
+        .order('created_at', { ascending: false });
 
       if (error) {
         throw new Error(`${error.message}: ${error.details}`);

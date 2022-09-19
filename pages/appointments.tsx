@@ -9,19 +9,19 @@ import useAppointments from '../hooks/useAppointments/useAppointments';
 import { AppointmentsResponse } from '../types/appointment';
 import AppointmentsCreateModal from '../components/features/AppointmentsCreateModal/AppointmentsCreateModal';
 import AppointmentsTable from '../components/features/AppointmentsTable/AppointmentsTable';
-import { useMediaQuery } from '@mantine/hooks';
 import { useModals, openContextModal } from '@mantine/modals';
 import useTreatments from '../hooks/useTreatments/useTreatments';
 import useSpecialists from '../hooks/useSpecialists/useSpecialists';
 import { DateRangePicker, DateRangePickerValue } from '@mantine/dates';
 import 'dayjs/locale/es-mx';
 import dayjs from 'dayjs';
+import { useIsMobile } from '../hooks/useIsMobile/useIsMobile';
 
 export default function Appointments() {
   const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
   const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
   const modals = useModals();
-  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
+  const isMobile = useIsMobile();
 
   const [seletedSp, setSelectedSp] = useState<string | null>('');
   const [seletedTr, setSelectedTr] = useState<string | null>('');
@@ -36,7 +36,7 @@ export default function Appointments() {
     fromDate: dayjs(dateRangeValue[0]).format(),
     toDate: dayjs(dateRangeValue[1]).format(),
     specialist: seletedSp,
-    treatments: seletedTr,
+    treatment: seletedTr,
   });
 
   const openCreatePatientModal = () => {
@@ -127,8 +127,10 @@ export default function Appointments() {
           </Group>
         </Grid.Col>
         <Grid.Col span={12}>
-          <Paper shadow="xs" p="xs" sx={{ height: 'calc(100vh - 170px)', position: 'relative' }}>
-            {isLoadingAppointments && <LoadingOverlay visible />}
+          <Paper shadow="xs" p="xs" sx={{ height: 'calc(100vh - 152px)', position: 'relative' }}>
+            {(isLoadingAppointments || isLoadingTreatments || isLoadingSpecialist) && (
+              <LoadingOverlay visible />
+            )}
             {!isLoadingAppointments && appointmentsData && (
               <AppointmentsTable data={appointmentsData} />
             )}

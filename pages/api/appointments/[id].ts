@@ -7,18 +7,28 @@ export default withApiAuth(async function ProtectedRoute(req, res) {
   } = req;
 
   switch (method) {
+    case 'DELETE':
+      const { data: deletedData, error: deletedError } = await supabaseServerClient({ req, res })
+        .from('appointments')
+        .delete()
+        .match({ id });
+
+      if (deletedError)
+        res.status(500).json({ message: 'Hubo un error intentando eliminar el registro' });
+
+      res.json(deletedData);
     case 'PUT':
-      const { data, error } = await supabaseServerClient({ req, res })
+      const { data: updatedData, error: updatedError } = await supabaseServerClient({ req, res })
         .from('appointments')
         .update({ ...req.body })
         .match({ id });
 
-      if (error) res.status(500).json({ message: 'Hubo un error al actualizar el turno' });
+      if (updatedError) res.status(500).json({ message: 'Hubo un error al actualizar el turno' });
 
-      res.json(data);
+      res.json(updatedData);
       break;
     default:
-      res.setHeader('Allow', ['PUT']);
+      res.setHeader('Allow', ['PUT', 'DELETE']);
       res.status(405).end(`Method ${method} Not Allowed`);
   }
 });
