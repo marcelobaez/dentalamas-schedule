@@ -16,9 +16,11 @@ import { useRouter } from 'next/router';
 import { useForm } from '@mantine/form';
 import { useInputState } from '@mantine/hooks';
 import { showNotification } from '@mantine/notifications';
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
+// import { supabaseClient } from '@supabase/auth-helpers-nextjs';
 import { IconCheck, IconX } from '@tabler/icons';
 import Logo from '../components/Layout/Logo';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import { Database } from '../types/supabase';
 
 function PasswordRequirement({ meets, label }: { meets: boolean; label: string }) {
   return (
@@ -74,6 +76,7 @@ export default function PasswordReset() {
   const { classes } = useStyles();
   const [value, setValue] = useInputState('');
   const strength = getStrength(value);
+  const supabaseClient = useSupabaseClient<Database>();
 
   const checks = requirements.map((requirement, index) => (
     <PasswordRequirement key={index} label={requirement.label} meets={requirement.re.test(value)} />
@@ -106,7 +109,7 @@ export default function PasswordReset() {
 
   const handlePaswordChange = async () => {
     try {
-      const { user, error } = await supabaseClient.auth.update({ password: value });
+      const { data, error } = await supabaseClient.auth.updateUser({ password: value });
 
       if (error) {
         showNotification({
@@ -115,7 +118,7 @@ export default function PasswordReset() {
           color: 'red',
         });
       } else {
-        console.log(user);
+        console.log(data);
         showNotification({
           title: 'Listo!',
           message: 'Ya puedes iniciar sesion con tu nueva contraseña',

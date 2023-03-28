@@ -1,14 +1,28 @@
-import { withApiAuth, supabaseServerClient, getUser } from '@supabase/auth-helpers-nextjs';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { NextApiHandler } from 'next';
 
-export default withApiAuth(async function ProtectedRoute(req, res) {
+const ProtectedRoute: NextApiHandler = async (req, res) => {
   const {
     query: { id },
     method,
   } = req;
 
+  // Create authenticated Supabase Client
+  const supabase = createServerSupabaseClient({ req, res });
+  // Check if we have a session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session)
+    return res.status(401).json({
+      error: 'not_authenticated',
+      description: 'The user does not have an active session or is not authenticated',
+    });
+
   switch (method) {
     case 'PUT':
-      const { data, error } = await supabaseServerClient({ req, res })
+      const { data, error } = await supabase
         .from('patients')
         .update({ ...req.body })
         .match({ id });
@@ -21,4 +35,6 @@ export default withApiAuth(async function ProtectedRoute(req, res) {
       res.setHeader('Allow', ['PUT']);
       res.status(405).end(`Method ${method} Not Allowed`);
   }
-});
+};
+
+export default ProtectedRoute;

@@ -1,6 +1,6 @@
-import { supabaseServerClient, withPageAuth } from '@supabase/auth-helpers-nextjs';
+import { createServerSupabaseClient, User } from '@supabase/auth-helpers-nextjs';
+import { GetServerSidePropsContext } from 'next';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
-import { AppointmentsResponse } from '../types/appointment';
 import useAppointments from '../hooks/useAppointments/useAppointments';
 import Head from 'next/head';
 import {
@@ -24,7 +24,8 @@ import {
   Title,
   useMantineTheme,
 } from '@mantine/core';
-import FullCalendar, { DateSelectArg, DatesSetArg, EventContentArg } from '@fullcalendar/react';
+import FullCalendar from '@fullcalendar/react';
+import { DateSelectArg, DatesSetArg, EventClickArg, EventContentArg } from '@fullcalendar/core';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -33,38 +34,84 @@ import esLocale from '@fullcalendar/core/locales/es';
 import { getAvatarFromFullName } from '../utils/getAvatarName';
 import useTreatments from '../hooks/useTreatments/useTreatments';
 import useSpecialists from '../hooks/useSpecialists/useSpecialists';
-import { IconCalendar, IconPlus } from '@tabler/icons';
+import { IconCalendar, IconForbid2, IconPlus } from '@tabler/icons';
 import { openContextModal, useModals } from '@mantine/modals';
-import { useMediaQuery } from '@mantine/hooks';
 import AppointmentsCreateModal from '../components/features/AppointmentsCreateModal/AppointmentsCreateModal';
 import { useState } from 'react';
-import { DateRangePicker, DateRangePickerValue } from '@mantine/dates';
-import 'dayjs/locale/es-mx';
+import { DateRangePickerValue } from '@mantine/dates';
 import dayjs from 'dayjs';
-import { appointmentsQuerySelect } from '../utils/constants';
 import {
   AppointmentState,
+  mantineStateColors,
   stateColors,
 } from '../components/features/AppointmentsTable/AppointmentsTable';
+import { useIsMobile } from '../hooks/useIsMobile/useIsMobile';
+import 'dayjs/locale/es-mx';
+import { AppointmentsResponse } from '../types/appointment';
 
 enum Specialist {
   Talamas = 1,
   Valiente,
 }
 
-const specialistColors = {
-  [Specialist.Talamas]: '#868E96',
-  [Specialist.Valiente]: '#748FFC',
+interface ScheduleModalProps {
+  dateRange: [Date, Date];
+  onBlock: () => void;
+  onSchedule: () => void;
+}
+
+interface EventDetailsProps {
+  eventData: {
+    patient: string;
+    timeText: string;
+    title: string;
+    specialist: string;
+    state: {
+      id: number;
+      name: string;
+    };
+  };
+}
+
+const ScheduleModal = ({ dateRange, onBlock, onSchedule }: ScheduleModalProps) => {
+  const from = dayjs(dateRange[0]).format('HH:mm');
+  const to = dayjs(dateRange[1]).format('HH:mm');
+  return (
+    <Stack>
+      <Button leftIcon={<IconForbid2 />} color="red">
+        {`Bloquear ${from} - ${to}`}
+      </Button>
+      <Button
+        onClick={() => onSchedule()}
+        leftIcon={<IconCalendar />}
+      >{`Agendar ${from} - ${to}`}</Button>
+    </Stack>
+  );
 };
 
-const useStyles = createStyles((theme) => ({
-  dropdown: {
-    // backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.blue[6],
-    backgroundColor: theme.colors.dark[4],
-    borderColor: theme.colors.dark[4],
-    color: theme.white,
-  },
-}));
+const EventDetails = ({
+  eventData: { timeText, title, patient, specialist, state },
+}: EventDetailsProps) => {
+  return (
+    <Stack spacing={'xs'} p="sm">
+      <Text size={'xs'}>{`${timeText} - ${title}`}</Text>
+      <Group spacing={'xs'}>
+        <Text size={'sm'} weight={500}>
+          {patient}
+        </Text>
+      </Group>
+      <Group spacing={'xs'}>
+        <Avatar radius={'xl'} size={20}>
+          {getAvatarFromFullName(specialist)}
+        </Avatar>
+        <Text size="sm">{specialist}</Text>
+        <Badge color={state ? mantineStateColors[state.id as AppointmentState] : 'gray'}>
+          {state ? state.name : 'N/D'}
+        </Badge>
+      </Group>
+    </Stack>
+  );
+};
 
 const renderEventContent = (
   eventContent: EventContentArg,
@@ -104,7 +151,7 @@ const renderEventContent = (
               {getAvatarFromFullName(specialist)}
             </Avatar>
             <Text size="sm">{specialist}</Text>
-            <Badge color={state ? stateColors[state.id as AppointmentState] : 'gray'}>
+            <Badge color={state ? mantineStateColors[state.id as AppointmentState] : 'gray'}>
               {state ? state.name : 'N/D'}
             </Badge>
           </Group>
@@ -120,11 +167,6 @@ export default function Calendar() {
   const [selectedSp, setSelectedSp] = useState<string | null>('');
   const [selectedTr, setSelectedTr] = useState<string | null>('');
 
-  const [dateRangeValue, setRangeValue] = useState<DateRangePickerValue>([
-    dayjs().startOf('week').add(1, 'day').toDate(),
-    dayjs().endOf('week').toDate(),
-  ]);
-
   const { data, isLoading } = useAppointments({
     fromDate: '',
     toDate: '',
@@ -136,8 +178,7 @@ export default function Calendar() {
   const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
   const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
   const modals = useModals();
-  const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
-  const { classes } = useStyles();
+  const isMobile = useIsMobile();
 
   const openCreatePatientModal = () => {
     openContextModal({
@@ -148,18 +189,65 @@ export default function Calendar() {
     });
   };
 
-  const openCreateAppointmentModal = () => {
+  const openCreateAppointmentModal = (dateRange?: [Date, Date]) => {
     modals.openModal({
       modalId: 'appointmentsCreateModal',
       centered: true,
-      size: isMobile ? '100%' : '55%',
+      fullScreen: isMobile,
+      size: '55%',
       title: 'Registrar turno',
       children: (
         <AppointmentsCreateModal
-          onClose={() => {
-            modals.closeModal('appointmentsCreateModal');
-          }}
+          onClose={() => modals.closeModal('appointmentsCreateModal')}
           onCreatePatient={() => openCreatePatientModal()}
+          {...(dateRange ? { initialRange: [dateRange[0], dateRange[1]] } : null)}
+        />
+      ),
+    });
+  };
+
+  const openScheduleModal = (range: DateSelectArg) => {
+    const dateRange: [Date, Date] = [range.start, range.end];
+    modals.openModal({
+      modalId: 'scheduleModal',
+      centered: true,
+      size: 'sm',
+      title: 'Nuevo evento',
+      children: (
+        <ScheduleModal
+          dateRange={dateRange}
+          onBlock={() => modals.closeModal('scheduleModal')}
+          onSchedule={() => openCreateAppointmentModal(dateRange)}
+        />
+      ),
+    });
+  };
+
+  const openEventModal = (eventArg: EventClickArg) => {
+    const {
+      event: {
+        startStr,
+        endStr,
+        title,
+        _def: {
+          extendedProps: { patient, specialist, state },
+        },
+      },
+    } = eventArg;
+    modals.openModal({
+      modalId: 'eventModal',
+      centered: true,
+      withCloseButton: false,
+      size: 'sm',
+      children: (
+        <EventDetails
+          eventData={{
+            patient: patient,
+            specialist: specialist,
+            state: state,
+            timeText: startStr,
+            title: title,
+          }}
         />
       ),
     });
@@ -225,31 +313,36 @@ export default function Calendar() {
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
                 editable
                 selectable
-                events={appointmentsData.map((item) => ({
-                  id: String(item.id),
-                  title: item.treatments.name,
-                  start: new Date(item.startDate),
-                  end: new Date(item.endDate),
-                  color: specialistColors[item.specialists.id as Specialist],
-                  state: item.appointments_states
-                    ? {
-                        id: item.appointments_states.id,
-                        name: item.appointments_states.name,
-                      }
-                    : null,
-                  specialist: `${item.specialists.firstName} ${item.specialists.lastName}`,
-                  patient: `${item.patients.firstName} ${item.patients.lastName}`,
-                }))}
-                // select={(arg: DateSelectArg) => console.log(arg)}
+                events={appointmentsData.map((item) => {
+                  const appointment = item as AppointmentsResponse;
+                  return {
+                    id: String(item.id),
+                    title: appointment.treatments.name,
+                    start: new Date(appointment.startDate),
+                    end: new Date(appointment.endDate),
+                    color: appointment.appointments_states
+                      ? stateColors[appointment.appointments_states.id as AppointmentState]
+                      : 'blue',
+                    state: appointment.appointments_states
+                      ? {
+                          id: appointment.appointments_states.id,
+                          name: appointment.appointments_states.name,
+                        }
+                      : null,
+                    specialist: `${appointment.specialists.firstName} ${appointment.specialists.lastName}`,
+                    patient: `${appointment.patients.firstName} ${appointment.patients.lastName}`,
+                  };
+                })}
+                select={(arg: DateSelectArg) => openScheduleModal(arg)}
                 // datesSet={(arg: DatesSetArg) => {
                 //   console.log(arg);
-                //   setRangeValue([arg.start, arg.end]);
                 // }}
                 locale={esLocale}
                 initialView={'timeGridWeek'}
                 slotMinTime="07:00:00"
                 slotMaxTime="23:00:00"
-                eventContent={(event) => renderEventContent(event, theme, classes)}
+                eventClick={(arg: EventClickArg) => openEventModal(arg)}
+                // eventContent={(event) => renderEventContent(event, theme, classes)}
                 headerToolbar={{
                   left: 'prev today next',
                   center: 'title',
@@ -264,46 +357,58 @@ export default function Calendar() {
   );
 }
 
-export const getServerSideProps = withPageAuth({
-  redirectTo: '/login',
-  async getServerSideProps(ctx) {
-    const queryClient = new QueryClient();
+export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
+  // Create authenticated Supabase Client
+  const supabase = createServerSupabaseClient(ctx);
+  // Check if we have a session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-    // Get appointments
-    // await queryClient.prefetchQuery(['appointments', '', '', '', ''], async () => {
-    //   const { data, error, count } = await supabaseServerClient(ctx)
-    //     .from<AppointmentsResponse>('appointments')
-    //     .select(appointmentsQuerySelect, { count: 'exact' });
-
-    //   if (error) throw new Error(`${error.message}: ${error.details}`);
-
-    //   return data;
-    // });
-
-    await queryClient.prefetchQuery(['treatments'], async () => {
-      // Get treatments list
-      const { data, error } = await supabaseServerClient(ctx).from('treatments').select('id, name');
-
-      if (error) throw new Error(`${error.message}: ${error.details}`);
-
-      return data;
-    });
-
-    await queryClient.prefetchQuery(['specialists'], async () => {
-      // Get treatments list
-      const { data, error } = await supabaseServerClient(ctx)
-        .from('specialists')
-        .select('id, firstName, lastName, title');
-
-      if (error) throw new Error(`${error.message}: ${error.details}`);
-
-      return data;
-    });
-
+  if (!session)
     return {
-      props: {
-        dehydratedState: dehydrate(queryClient),
+      redirect: {
+        destination: '/login',
+        permanent: false,
       },
     };
-  },
-});
+
+  const queryClient = new QueryClient();
+
+  // Get appointments
+  // await queryClient.prefetchQuery(['appointments', '', '', '', ''], async () => {
+  //   const { data, error, count } = await supabaseServerClient(ctx)
+  //     .from<AppointmentsResponse>('appointments')
+  //     .select(appointmentsQuerySelect, { count: 'exact' });
+
+  //   if (error) throw new Error(`${error.message}: ${error.details}`);
+
+  //   return data;
+  // });
+
+  await queryClient.prefetchQuery(['treatments'], async () => {
+    // Get treatments list
+    const { data, error } = await supabase.from('treatments').select('id, name');
+
+    if (error) throw new Error(`${error.message}: ${error.details}`);
+
+    return data;
+  });
+
+  await queryClient.prefetchQuery(['specialists'], async () => {
+    // Get treatments list
+    const { data, error } = await supabase
+      .from('specialists')
+      .select('id, firstName, lastName, title');
+
+    if (error) throw new Error(`${error.message}: ${error.details}`);
+
+    return data;
+  });
+
+  return {
+    props: {
+      dehydratedState: dehydrate(queryClient),
+    },
+  };
+};

@@ -35,26 +35,29 @@ export enum AppointmentState {
   Pending,
   Cancelled,
   Rejected,
+  Rescheduled = 6,
 }
 
-const stateIcons = {
-  [AppointmentState.Approved]: <IconCheck width={10} />,
-  [AppointmentState.Pending]: <IconHourglass width={10} />,
-  [AppointmentState.Cancelled]: <IconBan width={10} />,
-  [AppointmentState.Rejected]: <IconUser width={10} />,
+export const stateColors = {
+  [AppointmentState.Approved]: '#69DB7C',
+  [AppointmentState.Pending]: '#FFA94D',
+  [AppointmentState.Cancelled]: '#FF8787',
+  [AppointmentState.Rejected]: '#5C5F66',
+  [AppointmentState.Rescheduled]: '#CED4DA',
 };
 
-export const stateColors = {
+export const mantineStateColors = {
   [AppointmentState.Approved]: 'green',
-  [AppointmentState.Pending]: '#CED4DA', //gray.4 in theme. TODO: find a way to change it to named index
+  [AppointmentState.Pending]: 'orange', //gray.4 in theme. TODO: find a way to change it to named index
   [AppointmentState.Cancelled]: 'red',
   [AppointmentState.Rejected]: 'black',
+  [AppointmentState.Rescheduled]: 'gray',
 };
 
 const getSwatchColorComponent = (state: AppointmentState, value: string) => {
   return (
     <Group spacing={'xs'}>
-      <ColorSwatch size={16} color={stateColors[state]} sx={{ color: '#fff' }}>
+      <ColorSwatch size={16} color={mantineStateColors[state]} sx={{ color: '#fff' }}>
         {/* {stateIcons[state]} */}
       </ColorSwatch>
       <Text>{value}</Text>

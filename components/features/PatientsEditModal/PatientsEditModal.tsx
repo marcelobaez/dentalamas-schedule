@@ -16,11 +16,18 @@ interface ErrorResponse {
   message: string;
 }
 
+type FormValues = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string | null;
+};
+
 export default function PatientsEditModal({ data }: ModalProps) {
   const queryClient = useQueryClient();
   const modals = useModals();
 
-  const form = useForm({
+  const form = useForm<FormValues>({
     initialValues: {
       firstName: '',
       lastName: '',
@@ -41,7 +48,7 @@ export default function PatientsEditModal({ data }: ModalProps) {
   useEffect(() => form.setValues(data), [data]);
 
   // Get inferred form values type
-  type FormValues = typeof form.values;
+  // type FormValues = typeof form.values;
 
   const addPatientMutation = useMutation(
     (values) => axios.put(`/api/patients/${data.id}`, values),

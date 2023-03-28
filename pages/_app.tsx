@@ -5,38 +5,36 @@ import Head from 'next/head';
 import { ColorScheme, ColorSchemeProvider, MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { NotificationsProvider } from '@mantine/notifications';
-import { UserProvider } from '@supabase/auth-helpers-react';
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
+import { SessionContextProvider, Session } from '@supabase/auth-helpers-react';
+import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import AppShellLayout from '../components/Layout/AppShell';
 import { RouteTransition } from '../components/RouteTransition';
-import { Hydrate, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { DehydratedState, Hydrate, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import PatientsCreateModal from '../components/features/PatientsCreateModal/PatientsCreateModal';
+import { Database } from '../types/supabase';
 
-// import 'react-big-calendar/lib/css/react-big-calendar.css';
-import '@fullcalendar/common/main.css';
-import '@fullcalendar/daygrid/main.css';
-import '@fullcalendar/timegrid/main.css';
-import '@fullcalendar/list/main.css';
-
-export type NextPageWithLayout = NextPage & {
+export type NextPageWithLayout<P = {}, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: ReactElement) => ReactNode;
 };
 
 type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
+  initialSession: Session;
+  dehydratedState: DehydratedState;
 };
 
-function MyApp({ Component, pageProps }: AppPropsWithLayout) {
+function MyApp({ Component, pageProps, dehydratedState, initialSession }: AppPropsWithLayout) {
   const [colorScheme, setColorScheme] = useState<ColorScheme>('light');
   const toggleColorScheme = (value?: ColorScheme) =>
     setColorScheme(value || (colorScheme === 'dark' ? 'light' : 'dark'));
   const [queryClient] = useState(() => new QueryClient());
 
+  // Create a new supabase browser client on every first render.
+  const [supabaseClient] = useState(() => createBrowserSupabaseClient<Database>());
+
   // Use the layout defined at the page level, if available
-  const getLayout = Component.getLayout
-    ? (page: any) => page
-    : (page: any) => <AppShellLayout>{page}</AppShellLayout>;
+  const getLayout = Component.getLayout ?? ((page) => <AppShellLayout>{page}</AppShellLayout>);
 
   return (
     <>
@@ -46,8 +44,8 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
       </Head>
       <ColorSchemeProvider colorScheme={colorScheme} toggleColorScheme={toggleColorScheme}>
         <QueryClientProvider client={queryClient}>
-          <Hydrate state={pageProps.dehydratedState}>
-            <UserProvider supabaseClient={supabaseClient}>
+          <Hydrate state={dehydratedState}>
+            <SessionContextProvider supabaseClient={supabaseClient} initialSession={initialSession}>
               <MantineProvider withGlobalStyles withNormalizeCSS theme={{ colorScheme }}>
                 <ModalsProvider modals={{ patientsCreate: PatientsCreateModal }}>
                   <RouteTransition />
@@ -57,7 +55,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
                   </NotificationsProvider>
                 </ModalsProvider>
               </MantineProvider>
-            </UserProvider>
+            </SessionContextProvider>
           </Hydrate>
         </QueryClientProvider>
       </ColorSchemeProvider>

@@ -1,4 +1,3 @@
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
 import { ReactElement, useEffect, useState } from 'react';
 import {
   TextInput,
@@ -21,9 +20,10 @@ import { IconArrowLeft } from '@tabler/icons';
 import { showNotification } from '@mantine/notifications';
 import { useRouter } from 'next/router';
 import { useForm } from '@mantine/form';
-import { useUser } from '@supabase/auth-helpers-react';
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import Link from 'next/link';
 import Logo from '../components/Layout/Logo';
+import { Database } from '../types/supabase';
 
 const useStyles = createStyles((theme) => ({
   title: {
@@ -51,7 +51,8 @@ export default function LoginPage() {
   const { classes } = useStyles();
   const [loading, setLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
-  const { user, isLoading } = useUser();
+  const supabaseClient = useSupabaseClient<Database>();
+  const user = useUser();
 
   const form = useForm({
     initialValues: {
@@ -80,17 +81,17 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push('/calendar');
+      router.push('/dashboard');
     }
-  }, [isLoading, user, router]);
+  }, [user, router]);
 
   const handleLogin = async (values: FormValues) => {
     try {
       setLoading(true);
-      const { error } = await supabaseClient.auth.signIn(
-        { email: values.email, password: values.password },
-        { redirectTo: process.env.NEXT_PUBLIC_SITE_URL },
-      );
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
       if (error) {
         error.status === 403
           ? showNotification({
@@ -118,10 +119,12 @@ export default function LoginPage() {
   const handleEmailLogin = async (values: EmailFormValues) => {
     try {
       setEmailLoading(true);
-      const { error } = await supabaseClient.auth.signIn(
-        { email: values.email },
-        { redirectTo: process.env.NEXT_PUBLIC_SITE_URL },
-      );
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email: values.email,
+        options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL,
+        },
+      });
       if (error && error.status === 403) {
         showNotification({
           title: 'Lo sentimos!',
@@ -146,14 +149,14 @@ export default function LoginPage() {
     }
   };
 
-  if (isLoading && !user)
-    return (
-      <Container sx={() => ({ height: '100%' })}>
-        <Center>
-          <Loader size={'xl'} />
-        </Center>
-      </Container>
-    );
+  // if (!user)
+  //   return (
+  //     <Container sx={() => ({ height: '100%' })}>
+  //       <Center>
+  //         <Loader size={'xl'} />
+  //       </Center>
+  //     </Container>
+  //   );
 
   return (
     <Container size={500} my={30}>
@@ -183,7 +186,7 @@ export default function LoginPage() {
             {...form.getInputProps('password')}
           />
           <Group position="apart" mt="lg" className={classes.controls}>
-            <Link href="/reset" passHref>
+            <Link href="/reset" passHref legacyBehavior>
               <Anchor component="a" href="#" color="dimmed" size="sm" className={classes.control}>
                 <Center inline>
                   <Box ml={5}>Olvidaste tu contraseña?</Box>

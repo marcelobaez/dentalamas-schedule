@@ -1,7 +1,7 @@
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
-import { useUser } from '@supabase/auth-helpers-react';
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { useQuery } from '@tanstack/react-query';
 import { AppointmentsResponse } from '../../types/appointment';
+import { Database } from '../../types/supabase';
 import { appointmentsQuerySelect } from '../../utils/constants';
 
 interface AppointmentParams {
@@ -19,7 +19,8 @@ export default function useAppointments({
   specialist = '',
   top,
 }: AppointmentParams) {
-  const { user, error } = useUser();
+  const user = useUser();
+  const supabaseClient = useSupabaseClient<Database>();
   return useQuery(
     ['appointments', fromDate, toDate, specialist, treatment, top],
     async () => {
@@ -39,7 +40,7 @@ export default function useAppointments({
 
       if (top) query = query.limit(top);
 
-      const { data, error } = await query;
+      const { data, error } = await query.returns<AppointmentsResponse[]>();
 
       if (error) {
         throw new Error(`${error.message}: ${error.details}`);
@@ -48,7 +49,7 @@ export default function useAppointments({
       return data;
     },
     {
-      enabled: !!user,
+      enabled: Boolean(user),
     },
   );
 }

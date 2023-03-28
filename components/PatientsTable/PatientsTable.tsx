@@ -103,7 +103,9 @@ export function PatientsTable({ data }: TableProps) {
                   </td>
                   <td>
                     <Text size="sm">
-                      {new Date(row.created_at).toLocaleString('es-AR', DateTime.DATETIME_MED)}
+                      {row.created_at
+                        ? new Date(row.created_at).toLocaleString('es-AR', DateTime.DATETIME_MED)
+                        : ''}
                     </Text>
                   </td>
                   <td>

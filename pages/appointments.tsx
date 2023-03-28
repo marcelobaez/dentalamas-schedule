@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Group, Text, Paper, Button, Grid, Loader, Select, LoadingOverlay } from '@mantine/core';
 import Head from 'next/head';
-import { supabaseServerClient, withPageAuth } from '@supabase/auth-helpers-nextjs';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { IconCalendar, IconPlus } from '@tabler/icons';
 import 'dayjs/locale/es';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
@@ -16,6 +16,7 @@ import { DateRangePicker, DateRangePickerValue } from '@mantine/dates';
 import 'dayjs/locale/es-mx';
 import dayjs from 'dayjs';
 import { useIsMobile } from '../hooks/useIsMobile/useIsMobile';
+import { GetServerSidePropsContext } from 'next';
 
 export default function Appointments() {
   const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
@@ -141,49 +142,60 @@ export default function Appointments() {
   );
 }
 
-export const getServerSideProps = withPageAuth({
-  redirectTo: '/login',
-  async getServerSideProps(ctx) {
-    // Get appointments
-    const queryClient = new QueryClient();
-    // await queryClient.prefetchQuery(['appointments', '', '', '', ''], async () => {
-    //   const { data, error, count } = await supabaseServerClient(ctx)
-    //     .from<AppointmentsResponse>('appointments')
-    //     .select(
-    //       'id, startDate, endDate, patients ( id, firstName, lastName, phone, email), treatments ( id, name ), specialists ( id, firstName, lastName ), notes, attended, appointments_states ( id, name )',
-    //       { count: 'exact' },
-    //     )
-    //     .order('startDate', { ascending: false });
+export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
+  // Create authenticated Supabase Client
+  const supabase = createServerSupabaseClient(ctx);
+  // Check if we have a session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-    //   if (error) throw new Error(`${error.message}: ${error.details}`);
-
-    //   return data;
-    // });
-
-    await queryClient.prefetchQuery(['treatments'], async () => {
-      // Get treatments list
-      const { data, error } = await supabaseServerClient(ctx).from('treatments').select('id, name');
-
-      if (error) throw new Error(`${error.message}: ${error.details}`);
-
-      return data;
-    });
-
-    await queryClient.prefetchQuery(['specialists'], async () => {
-      // Get treatments list
-      const { data, error } = await supabaseServerClient(ctx)
-        .from('specialists')
-        .select('id, firstName, lastName, title');
-
-      if (error) throw new Error(`${error.message}: ${error.details}`);
-
-      return data;
-    });
-
+  if (!session)
     return {
-      props: {
-        dehydratedState: dehydrate(queryClient),
+      redirect: {
+        destination: '/login',
+        permanent: false,
       },
     };
-  },
-});
+  // Get appointments
+  const queryClient = new QueryClient();
+  // await queryClient.prefetchQuery(['appointments', '', '', '', ''], async () => {
+  //   const { data, error, count } = await supabaseServerClient(ctx)
+  //     .from<AppointmentsResponse>('appointments')
+  //     .select(
+  //       'id, startDate, endDate, patients ( id, firstName, lastName, phone, email), treatments ( id, name ), specialists ( id, firstName, lastName ), notes, attended, appointments_states ( id, name )',
+  //       { count: 'exact' },
+  //     )
+  //     .order('startDate', { ascending: false });
+
+  //   if (error) throw new Error(`${error.message}: ${error.details}`);
+
+  //   return data;
+  // });
+
+  await queryClient.prefetchQuery(['treatments'], async () => {
+    // Get treatments list
+    const { data, error } = await supabase.from('treatments').select('id, name');
+
+    if (error) throw new Error(`${error.message}: ${error.details}`);
+
+    return data;
+  });
+
+  await queryClient.prefetchQuery(['specialists'], async () => {
+    // Get treatments list
+    const { data, error } = await supabase
+      .from('specialists')
+      .select('id, firstName, lastName, title');
+
+    if (error) throw new Error(`${error.message}: ${error.details}`);
+
+    return data;
+  });
+
+  return {
+    props: {
+      dehydratedState: dehydrate(queryClient),
+    },
+  };
+};

@@ -19,7 +19,7 @@ export default function MainNavLinks() {
   return (
     <>
       {links.map((item, idx) => (
-        <Link key={`nav-link-${idx}`} href={item.link} passHref>
+        <Link key={`nav-link-${idx}`} href={item.link} passHref legacyBehavior>
           <NavLink
             component="a"
             onClick={() => setOpened(false)}

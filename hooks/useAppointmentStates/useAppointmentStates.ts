@@ -1,16 +1,14 @@
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
-import { useUser } from '@supabase/auth-helpers-react';
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { useQuery } from '@tanstack/react-query';
-import { Treatment } from '../../types/treatment';
+import { Database } from '../../types/supabase';
 
 export default function useAppointmentsStates() {
-  const { user, error } = useUser();
+  const user = useUser();
+  const supabaseClient = useSupabaseClient<Database>();
   return useQuery(
     ['appointmentsStates'],
     async () => {
-      const { data, error } = await supabaseClient
-        .from<Treatment>('appointments_states')
-        .select('id, name');
+      const { data, error } = await supabaseClient.from('appointments_states').select('id, name');
 
       if (error) {
         throw new Error(`${error.message}: ${error.details}`);

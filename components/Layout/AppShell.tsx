@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { MouseEventHandler, ReactNode, useEffect, useState } from 'react';
 import { useAtom } from 'jotai';
 import {
   AppShell,
@@ -16,11 +16,13 @@ import Logo from './Logo';
 import { IconLogout, IconMoonStars, IconSun } from '@tabler/icons';
 import MainNavLinks from './MainNavLinks';
 import Link from 'next/link';
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
-import { useUser } from '@supabase/auth-helpers-react';
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { User } from './User';
 import { useMediaQuery } from '@mantine/hooks';
 import { menuAtom } from '../../atoms/menu';
+import { Database } from '../../types/supabase';
+import { Profile } from '../../types/profile';
+import { useRouter } from 'next/router';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -52,16 +54,18 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
   const [opened, setOpened] = useAtom(menuAtom);
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const { classes, cx } = useStyles();
+  const supabaseClient = useSupabaseClient<Database>();
+  const router = useRouter();
   // const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
 
-  const { user } = useUser();
-  const [profile, setData] = useState();
+  const user = useUser();
+  const [profile, setData] = useState<Profile>();
 
   useEffect(() => {
     async function loadData() {
       const { data: profileData, error } = await supabaseClient
         .from('profiles')
-        .select('avatar_url, username, email')
+        .select('*')
         .eq('id', user!.id)
         .single();
       if (error) console.log(error);
@@ -81,8 +85,16 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
           </Navbar.Section>
           <Navbar.Section>{profile && <User profile={profile} />}</Navbar.Section>
           <Navbar.Section className={classes.footer}>
-            <Link href="/api/auth/logout" passHref>
-              <NavLink icon={<IconLogout />} component="a" label="Cerrar sesion" />
+            <Link href="#" passHref legacyBehavior>
+              <NavLink
+                icon={<IconLogout />}
+                component="a"
+                label="Cerrar sesion"
+                onClick={async () => {
+                  await supabaseClient.auth.signOut();
+                  router.push('/login');
+                }}
+              />
             </Link>
           </Navbar.Section>
         </Navbar>

@@ -18,7 +18,7 @@ import { Calendar, TimeRangeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { showNotification } from '@mantine/notifications';
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { IconCheck, IconClock, IconUserPlus } from '@tabler/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -30,6 +30,7 @@ import useSpecialists from '../../../hooks/useSpecialists/useSpecialists';
 import useTreatments from '../../../hooks/useTreatments/useTreatments';
 import { AppoinmentFormValues, AppointmentsResponse } from '../../../types/appointment';
 import { Patient } from '../../../types/patient';
+import { Database } from '../../../types/supabase';
 import { getBooleanFromString } from '../../../utils/forms';
 import { getAvatarFromFullName } from '../../../utils/getAvatarName';
 
@@ -51,6 +52,7 @@ interface AppointmentRequest {
 interface ModalProps {
   onClose: () => void;
   onCreatePatient: () => void;
+  initialRange?: [Date, Date];
 }
 
 const EXISTING_USERS = 'Pacientes encontrados';
@@ -79,15 +81,21 @@ const SelectItem = forwardRef<HTMLDivElement, ItemProps>(
 
 SelectItem.displayName = 'SelectItem';
 
-export default function AppointmentsCreateModal({ onClose, onCreatePatient }: ModalProps) {
+export default function AppointmentsCreateModal({
+  onClose,
+  onCreatePatient,
+  initialRange,
+}: ModalProps) {
   const queryClient = useQueryClient();
   const [emptyResults, setEmptyResults] = useState(false);
   const isMobile = useIsMobile();
   const [attendance, setAttendance] = useState('');
   // Time range state
   const now = new Date();
-  const startTime = dayjs(now).add(1, 'hour').startOf('hour').toDate();
-  const endTime = dayjs(startTime).add(30, 'minutes').toDate();
+  const startTime = initialRange
+    ? initialRange[0]
+    : dayjs(now).add(1, 'hour').startOf('hour').toDate();
+  const endTime = initialRange ? initialRange[1] : dayjs(startTime).add(30, 'minutes').toDate();
   const [timeRange, setTimeRange] = useState<[Date, Date]>([startTime, endTime]);
 
   // State for autocomplete
@@ -100,8 +108,12 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
   const { data: appointmentStateData, isLoading: isLoadingAppointmentsStates } =
     useAppointmentsStates();
 
+  const user = useUser();
+
+  const supabaseClient = useSupabaseClient<Database>();
+
   // Search query
-  const { data: searchResults, isFetching } = useQuery<Patient[]>(
+  const { data: searchResults, isFetching } = useQuery(
     ['searchPatients', debounced],
     async () => {
       const { data, error } = await supabaseClient
@@ -116,14 +128,16 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
       return data;
     },
     {
-      enabled: Boolean(debounced),
+      enabled: Boolean(user) && Boolean(debounced),
       onSuccess: (data) => {
         data.length === 0 && setEmptyResults(true);
       },
     },
   );
 
-  const [dayValue, setDayValue] = useState<Date | null>(new Date());
+  const [dayValue, setDayValue] = useState<Date | null>(
+    initialRange ? initialRange[0] : new Date(),
+  );
 
   const form = useForm<AppoinmentFormValues>({
     initialValues: {
@@ -287,7 +301,7 @@ export default function AppointmentsCreateModal({ onClose, onCreatePatient }: Mo
               </Text>
               <Calendar
                 excludeDate={(date) => date.getDay() === 0}
-                minDate={new Date()}
+                // minDate={new Date()}
                 locale="es"
                 value={dayValue}
                 onChange={handleDayChange}

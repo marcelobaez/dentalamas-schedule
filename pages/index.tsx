@@ -1,3 +1,4 @@
+import { withPageAuth } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 
@@ -13,3 +14,5 @@ export default function Home() {
 
   return <div>Home page</div>;
 }
+
+export const getServerSideProps = withPageAuth({ redirectTo: '/login' });

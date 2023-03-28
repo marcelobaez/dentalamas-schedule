@@ -10,8 +10,10 @@ import {
   ScrollArea,
   Center,
   LoadingOverlay,
+  Progress,
+  Avatar,
 } from '@mantine/core';
-import { withPageAuth } from '@supabase/auth-helpers-nextjs';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import Head from 'next/head';
 import useDashboard from '../hooks/useDashboard/useDashboard';
 import StatWidget from '../components/widgets/StatWidget';
@@ -21,6 +23,14 @@ import useAppointments from '../hooks/useAppointments/useAppointments';
 import dayjs from 'dayjs';
 import { AppointmentsResponse } from '../types/appointment';
 import { DateTime } from 'luxon';
+import {
+  AppointmentState,
+  mantineStateColors,
+} from '../components/features/AppointmentsTable/AppointmentsTable';
+import { Patient } from '../types/patient';
+import { Specialist } from '../types/specialist';
+import { GetServerSidePropsContext } from 'next';
+import { AppointmentStates } from '../types/appointmentState';
 
 export default function Dashboard() {
   const { data: dashboardData, isLoading: isLoadingDashboard } = useDashboard();
@@ -75,7 +85,7 @@ export default function Dashboard() {
             isLoading={isLoadingDashboard}
           />
         </Grid.Col>
-        <Grid.Col xl={6} xs={12}>
+        <Grid.Col xl={8} xs={12}>
           <Paper p="md" radius="md" shadow="md">
             <Title order={4}>Turnos del dia</Title>
             {isLoadingAppointments && (
@@ -96,39 +106,49 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {appointmentsData && appointmentsData.length > 0 ? (
-                      appointmentsData.map((row, idx) => (
-                        <tr key={`treat-row-${idx}`}>
-                          <td>
-                            <Badge fullWidth>{`${new Date(row.startDate).toLocaleString(
-                              'es-AR',
-                              DateTime.TIME_SIMPLE,
-                            )} - ${new Date(row.endDate).toLocaleString(
-                              'es-AR',
-                              DateTime.TIME_SIMPLE,
-                            )}`}</Badge>
-                          </td>
-                          <td>
-                            <Group spacing="sm">
-                              <div>
-                                <Text size="sm" weight={500}>
-                                  {`${row.patients.lastName}, ${row.patients.firstName}`}
-                                </Text>
-                                <Text size="xs" color="dimmed">
-                                  {row.patients.email}
-                                </Text>
-                              </div>
-                            </Group>
-                          </td>
-                          <td>
-                            <Text>{`${row.specialists.firstName} ${row.specialists.lastName}`}</Text>
-                          </td>
-                          <td>
-                            <Badge color="green" fullWidth>
-                              {row.appointments_states.name}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))
+                      appointmentsData.map((row, idx) => {
+                        const appointmentState = row.appointments_states as AppointmentStates;
+                        return (
+                          <tr key={`treat-row-${idx}`}>
+                            <td>
+                              <Badge fullWidth>{`${new Date(row.startDate).toLocaleString(
+                                'es-AR',
+                                DateTime.TIME_SIMPLE,
+                              )} - ${new Date(row.endDate).toLocaleString(
+                                'es-AR',
+                                DateTime.TIME_SIMPLE,
+                              )}`}</Badge>
+                            </td>
+                            <td>
+                              <Group spacing="sm">
+                                <div>
+                                  <Text size="sm" weight={500}>
+                                    {`${(row.patients as Patient).lastName}, ${
+                                      (row.patients as Patient).firstName
+                                    }`}
+                                  </Text>
+                                  <Text size="xs" color="dimmed">
+                                    {(row.patients as Patient).email}
+                                  </Text>
+                                </div>
+                              </Group>
+                            </td>
+                            <td>
+                              <Text>{`${(row.specialists as Specialist).firstName} ${
+                                (row.specialists as Specialist).lastName
+                              }`}</Text>
+                            </td>
+                            <td>
+                              <Badge
+                                color={mantineStateColors[appointmentState.id as AppointmentState]}
+                                fullWidth
+                              >
+                                {appointmentState.name}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
                         <td>
@@ -142,16 +162,86 @@ export default function Dashboard() {
             )}
           </Paper>
         </Grid.Col>
-        {/* <Grid.Col xl={6} xs={12}>
+        <Grid.Col xl={4} xs={12}>
           <Paper p="md" radius="md" shadow="md">
-            <Title order={4}>Carga de trabajo</Title>
+            <Title order={4} pb="md">
+              Carga de trabajo
+            </Title>
+            {isLoadingAppointments && (
+              <Center sx={(th) => ({ height: '287px', position: 'relative' })}>
+                <LoadingOverlay visible />
+              </Center>
+            )}
+            {!isLoadingAppointments && dashboardData && (
+              <Grid align="center">
+                <Grid.Col sm={12} lg={6}>
+                  <Group spacing="sm">
+                    <Avatar color="cyan" size={26} radius={26}>
+                      NT
+                    </Avatar>
+                    <Text size="sm" weight={500}>
+                      {dashboardData.data.workload.doctorOne.name}
+                    </Text>
+                  </Group>
+                </Grid.Col>
+                <Grid.Col sm={12} lg={6}>
+                  <Progress
+                    value={dashboardData?.data.workload.doctorOne.value}
+                    label={`${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(
+                      dashboardData.data.workload.doctorOne.value,
+                    )}%`}
+                    size="xl"
+                    radius="xl"
+                  />
+                </Grid.Col>
+                <Grid.Col sm={12} lg={6}>
+                  <Group spacing="sm">
+                    <Avatar color="gray" size={26} radius={26}>
+                      CV
+                    </Avatar>
+                    <Text size="sm" weight={500}>
+                      {dashboardData.data.workload.doctorTwo.name}
+                    </Text>
+                  </Group>
+                </Grid.Col>
+                <Grid.Col sm={12} lg={6}>
+                  <Progress
+                    value={dashboardData?.data.workload.doctorTwo.value}
+                    label={`${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(
+                      dashboardData.data.workload.doctorTwo.value,
+                    )}%`}
+                    size="xl"
+                    radius="xl"
+                  />
+                </Grid.Col>
+              </Grid>
+            )}
           </Paper>
-        </Grid.Col> */}
+        </Grid.Col>
       </Grid>
     </>
   );
 }
 
-export const getServerSideProps = withPageAuth({
-  redirectTo: '/login',
-});
+export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
+  // Create authenticated Supabase Client
+  const supabase = createServerSupabaseClient(ctx);
+  // Check if we have a session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session)
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+
+  return {
+    props: {
+      initialSession: session,
+    },
+  };
+};

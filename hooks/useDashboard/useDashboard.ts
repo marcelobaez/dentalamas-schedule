@@ -1,7 +1,8 @@
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
-import { useUser } from '@supabase/auth-helpers-react';
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
+import { AppointmentsResponse } from '../../types/appointment';
+import { Database } from '../../types/supabase';
 
 interface DashboardParams {
   fromDate: string | null;
@@ -19,7 +20,8 @@ const calculateDiff = (curr: Diffvalue, prev: Diffvalue) => {
 };
 
 export default function useDashboard() {
-  const { user, error } = useUser();
+  const user = useUser();
+  const supabaseClient = useSupabaseClient<Database>();
   return useQuery(
     ['dashboard'],
     async () => {
@@ -27,6 +29,15 @@ export default function useDashboard() {
       // const toLastWeekDate = dayjs().endOf('week').add(-1, 'week').format();
       const fromDate = dayjs().startOf('week').add(1, 'day').format();
       const toDate = dayjs().endOf('week').format();
+
+      const allAppQuery = await supabaseClient
+        .from('appointments')
+        .select('startDate, endDate, specialists ( id, firstName, lastName )', {
+          count: 'exact',
+        })
+        .gte('startDate', fromDate)
+        .lte('endDate', toDate)
+        .returns<AppointmentsResponse[]>();
 
       const attendedQuery = await supabaseClient
         .from('appointments')
@@ -49,17 +60,51 @@ export default function useDashboard() {
         .gte('startDate', fromDate)
         .lte('endDate', toDate);
 
+      const doctorOneHours = allAppQuery.data
+        ?.filter((item) => item.specialists.id === 1)
+        .reduce((prev, curr) => {
+          const prevFrom = dayjs(curr.startDate);
+          const prevTo = dayjs(curr.endDate);
+
+          const diff = prevTo.diff(prevFrom, 'hour', true);
+
+          return prev + diff;
+        }, 0);
+
+      const doctorOnePercentage = doctorOneHours ? (doctorOneHours * 100) / 20 : 0;
+
+      const doctorTwoHours = allAppQuery.data
+        ?.filter((item) => item.specialists.id === 2)
+        .reduce((prev, curr) => {
+          const prevFrom = dayjs(curr.startDate);
+          const prevTo = dayjs(curr.endDate);
+
+          const diff = prevTo.diff(prevFrom, 'hour', true);
+
+          return prev + diff;
+        }, 0);
+
+      const doctorTwoPercentage = doctorTwoHours ? (doctorTwoHours * 100) / 17.5 : 0;
+
       return {
         data: {
           attended: {
             count: attendedQuery.count,
-            // diff: calculateDiff(attendedQuery.count, lastWattendedQuery.count),
           },
           cancelled: {
             count: cancelledQuery.count,
-            // diff: calculateDiff(cancelledQuery.count, lastCancelledQuery.count),
           },
           approved: { count: approvedQuery.count },
+          workload: {
+            doctorOne: {
+              name: 'Nayibe Talamas',
+              value: doctorOnePercentage,
+            },
+            doctorTwo: {
+              name: 'Camila Valiente',
+              value: doctorTwoPercentage,
+            },
+          },
         },
       };
     },

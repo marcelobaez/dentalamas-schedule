@@ -1,12 +1,9 @@
 import React from 'react';
 import { UnstyledButton, Group, Avatar, Text, Box, useMantineTheme } from '@mantine/core';
+import { Profile } from '../../types/profile';
 
 interface UserProps {
-  profile: {
-    avatar_url: string;
-    username: string;
-    email: string;
-  };
+  profile: Profile;
 }
 
 export function User(props: UserProps) {

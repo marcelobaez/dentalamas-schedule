@@ -1,20 +1,32 @@
-import { withApiAuth, supabaseServerClient, getUser } from '@supabase/auth-helpers-nextjs';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { NextApiHandler } from 'next';
 
-export default withApiAuth(async function ProtectedRoute(req, res) {
+const ProtectedRoute: NextApiHandler = async (req, res) => {
   const { method } = req;
+
+  // Create authenticated Supabase Client
+  const supabase = createServerSupabaseClient({ req, res });
+  // Check if we have a session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session)
+    return res.status(401).json({
+      error: 'not_authenticated',
+      description: 'The user does not have an active session or is not authenticated',
+    });
 
   switch (method) {
     case 'POST':
-      const { user } = await getUser({ req, res });
+      const { user } = session;
 
       const body = {
         ...req.body,
         user_id: user.id,
       };
 
-      const { data, error } = await supabaseServerClient({ req, res })
-        .from('appointments')
-        .insert([body]);
+      const { data, error } = await supabase.from('appointments').insert([body]);
 
       if (error) {
         if (error.code === '23505') {
@@ -30,4 +42,6 @@ export default withApiAuth(async function ProtectedRoute(req, res) {
       res.setHeader('Allow', ['POST']);
       res.status(405).end(`Method ${method} Not Allowed`);
   }
-});
+};
+
+export default ProtectedRoute;

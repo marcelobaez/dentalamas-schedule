@@ -11,9 +11,10 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { showNotification } from '@mantine/notifications';
-import { supabaseClient } from '@supabase/auth-helpers-nextjs';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { ReactElement, useState } from 'react';
 import Logo from '../components/Layout/Logo';
+import { Database } from '../types/supabase';
 
 const useStyles = createStyles((theme) => ({
   title: {
@@ -39,6 +40,7 @@ const useStyles = createStyles((theme) => ({
 export default function ForgotPassword() {
   const { classes } = useStyles();
   const [loading, setLoading] = useState(false);
+  const supabaseClient = useSupabaseClient<Database>();
 
   const form = useForm({
     initialValues: {
@@ -55,7 +57,7 @@ export default function ForgotPassword() {
   const handleLogin = async (values: FormValues) => {
     try {
       setLoading(true);
-      const { data, error } = await supabaseClient.auth.api.resetPasswordForEmail(values.email, {
+      const { data, error } = await supabaseClient.auth.resetPasswordForEmail(values.email, {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/password-reset`,
       });
 

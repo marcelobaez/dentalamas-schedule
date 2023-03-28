@@ -1,10 +1,11 @@
 import { Button, Grid, Group, LoadingOverlay, Paper, Text } from '@mantine/core';
-import { withPageAuth } from '@supabase/auth-helpers-nextjs';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { IconUserPlus } from '@tabler/icons';
 import usePatients from '../hooks/usePatients/usePatients';
 import Head from 'next/head';
 import { openContextModal } from '@mantine/modals';
 import { PatientsTable } from '../components/PatientsTable/PatientsTable';
+import { GetServerSidePropsContext } from 'next';
 
 export default function Patients() {
   const { data: patients, isLoading, error } = usePatients();
@@ -47,6 +48,26 @@ export default function Patients() {
   );
 }
 
-export const getServerSideProps = withPageAuth({
-  redirectTo: '/login',
-});
+export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
+  // Create authenticated Supabase Client
+  const supabase = createServerSupabaseClient(ctx);
+  // Check if we have a session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session)
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+
+  return {
+    props: {
+      user: session.user,
+      initialSession: session,
+    },
+  };
+};
