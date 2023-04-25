@@ -248,6 +248,7 @@ export default function AppointmentsCreateModal({
                   value={value}
                   maxDropdownHeight={400}
                   data={createPatientsData()}
+                  limit={20}
                   onChange={setValue}
                   rightSection={isFetching ? <Loader size={16} /> : null}
                   label="Paciente"
