@@ -1,6 +1,5 @@
 import { useMantineColorScheme, Image } from '@mantine/core';
 import Link from 'next/link';
-// import Image from 'next/legacy/image';
 
 function Logo() {
   const { colorScheme } = useMantineColorScheme();
@@ -9,8 +8,9 @@ function Logo() {
       <Image
         src={colorScheme === 'dark' ? '/logo-dark.png' : '/logo.png'}
         alt="Logo image"
-        width={108}
-        height={30}
+        w="auto"
+        h={30}
+        fit="contain"
       />
     </Link>
   );
