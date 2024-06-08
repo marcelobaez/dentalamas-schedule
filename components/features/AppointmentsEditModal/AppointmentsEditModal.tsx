@@ -186,6 +186,7 @@ export default function AppointmentsEditModal({ data }: ModalProps) {
               <Group align={'end'}>
                 <TextInput
                   {...register('patient', { required: true })}
+                  value={`${data.patients.firstName} ${data.patients.lastName}`}
                   label="Paciente"
                   disabled
                   miw={240}
