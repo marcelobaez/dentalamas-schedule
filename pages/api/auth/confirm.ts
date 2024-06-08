@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (error) {
       console.error(error);
     } else {
-      next = stringOrFirstString(queryParams.next) || '/';
+      next = stringOrFirstString(queryParams.redirectTo) || '/';
     }
   }
 
