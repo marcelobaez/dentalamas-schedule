@@ -1,45 +1,45 @@
 import { Button, Group, Stack, TextInput } from '@mantine/core';
-import { useForm } from '@mantine/form';
 import { showNotification } from '@mantine/notifications';
-import { IconMail, IconPhone } from '@tabler/icons';
+import { IconMail, IconPhone } from '@tabler/icons-react';
 import axios, { AxiosError } from 'axios';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { Patient } from '../../../types/patient';
 import { ContextModalProps } from '@mantine/modals';
+import { SubmitHandler, useForm } from 'react-hook-form';
 
 interface ErrorResponse {
   message: string;
 }
 
+type FormValues = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string | null;
+};
+
 export default function PatientsCreateModal({ context, id }: ContextModalProps) {
   const queryClient = useQueryClient();
 
-  const form = useForm({
-    initialValues: {
+  // form state
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
+  } = useForm<FormValues>({
+    defaultValues: {
       firstName: '',
       lastName: '',
       phone: '',
       email: '',
     },
-    validate: {
-      firstName: (value) => (value.length < 3 ? 'El nombre es muy corto' : null),
-      lastName: (value) => (value.length < 3 ? 'El apellido es muy corto' : null),
-      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : 'Email no valido'),
-      phone: (value: string) =>
-        /^(?:(?:00)?549?)?0?(?:11|[2368]\d)(?:(?=\d{0,2}15)\d{2})??\d{8}$/.test(value)
-          ? null
-          : 'Numero de telefono incorrecto',
-    },
   });
 
-  // Get inferred form values type
-  type FormValues = typeof form.values;
-
-  const addPatientMutation = useMutation((values) => axios.post('/api/patients', values), {
+  const addPatientMutation = useMutation({
+    mutationFn: (values) => axios.post('/api/patients', values),
     onSuccess: (newPatient: Patient, values: FormValues) => {
       queryClient.setQueryData(['patients'], newPatient);
       // Show success notification
-      form.reset();
       showNotification({
         title: 'Exito!',
         message: 'Se agrego el paciente correctamente',
@@ -55,49 +55,87 @@ export default function PatientsCreateModal({ context, id }: ContextModalProps) 
     },
     // Always refetch after error or success:
     onSettled: () => {
-      queryClient.invalidateQueries(['patients']);
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
       context.closeModal(id);
     },
   });
 
+  // form submit
+  const onSubmit: SubmitHandler<FormValues> = (data) => addPatientMutation.mutate(data);
+
   return (
-    <form onSubmit={form.onSubmit((values) => addPatientMutation.mutate(values))}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       <Stack>
         <TextInput
           required
           label="Nombre"
           placeholder="Nombre"
-          {...form.getInputProps('firstName')}
+          min={3}
+          error={
+            errors.firstName
+              ? errors.firstName.type === 'minLength'
+                ? 'Longitud minima (3 caracteres) no alcanzada'
+                : 'Este campo es requerido'
+              : ''
+          }
+          {...register('firstName', { required: true, minLength: 3 })}
         />
         <TextInput
           required
           mt="xs"
           label="Apellido"
           placeholder="Apellido"
-          {...form.getInputProps('lastName')}
+          min={3}
+          error={
+            errors.lastName
+              ? errors.lastName.type === 'minLength'
+                ? 'Longitud minima (3 caracteres) no alcanzada'
+                : 'Este campo es requerido'
+              : ''
+          }
+          {...register('lastName', { required: true, minLength: 3 })}
         />
         <TextInput
           required
           mt="xs"
           label="Celular"
           placeholder="Celular"
-          icon={<IconPhone size={14} />}
-          // classNames={{ input: classes.invalid }}
-          {...form.getInputProps('phone')}
+          leftSection={<IconPhone size={14} />}
+          error={
+            errors.phone
+              ? errors.phone.type === 'pattern'
+                ? 'Numero no valido'
+                : 'Este campo es requerido'
+              : ''
+          }
+          {...register('phone', {
+            required: true,
+            pattern: /^(?:(?:00)?549?)?0?(?:11|[2368]\d)(?:(?=\d{0,2}15)\d{2})??\d{8}$/,
+          })}
         />
         <TextInput
           mt="xs"
           label="Email"
           placeholder="mail@ejemplo.com"
-          icon={<IconMail size={14} />}
-          // classNames={{ input: classes.invalid }}
-          {...form.getInputProps('email')}
+          leftSection={<IconMail size={14} />}
+          error={
+            errors.phone
+              ? errors.phone.type === 'pattern'
+                ? 'Email no valido'
+                : 'Este campo es requerido'
+              : ''
+          }
+          {...register('email', { pattern: /^\S+@\S+$/ })}
         />
-        <Group position="right" mt="md">
+        <Group justify="right" mt="md">
           <Button variant="outline" onClick={() => context.closeModal(id)}>
             Cancelar
           </Button>
-          <Button loading={addPatientMutation.isLoading} type="submit">
+          <Button
+            loading={addPatientMutation.isPending}
+            disabled={!isDirty || addPatientMutation.isPending}
+            type="submit"
+          >
             Enviar
           </Button>
         </Group>

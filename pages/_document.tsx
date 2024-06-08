@@ -1,15 +1,13 @@
-import { createGetInitialProps } from '@mantine/next';
 import Document, { Head, Html, Main, NextScript } from 'next/document';
-
-const getInitialProps = createGetInitialProps();
+import { ColorSchemeScript } from '@mantine/core';
 
 export default class _Document extends Document {
-  static getInitialProps = getInitialProps;
-
   render() {
     return (
-      <Html>
-        <Head />
+      <Html lang="es">
+        <Head>
+          <ColorSchemeScript defaultColorScheme="auto" />
+        </Head>
         <body>
           <Main />
           <NextScript />

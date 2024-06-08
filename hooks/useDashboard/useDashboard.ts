@@ -1,8 +1,7 @@
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { AppointmentsResponse } from '../../types/appointment';
-import { Database } from '../../types/supabase';
+import useSupabaseBrowser from '../../utils/supabase/component';
 
 interface DashboardParams {
   fromDate: string | null;
@@ -20,17 +19,16 @@ const calculateDiff = (curr: Diffvalue, prev: Diffvalue) => {
 };
 
 export default function useDashboard() {
-  const user = useUser();
-  const supabaseClient = useSupabaseClient<Database>();
-  return useQuery(
-    ['dashboard'],
-    async () => {
+  const supabase = useSupabaseBrowser();
+  return useQuery({
+    queryKey: ['dashboard'],
+    queryFn: async () => {
       // const fromLastWeekDate = dayjs().startOf('week').add(1, 'day').add(-1, 'week').format();
       // const toLastWeekDate = dayjs().endOf('week').add(-1, 'week').format();
       const fromDate = dayjs().startOf('week').add(1, 'day').format();
       const toDate = dayjs().endOf('week').format();
 
-      const allAppQuery = await supabaseClient
+      const allAppQuery = await supabase
         .from('appointments')
         .select('startDate, endDate, specialists ( id, firstName, lastName )', {
           count: 'exact',
@@ -39,21 +37,21 @@ export default function useDashboard() {
         .lte('endDate', toDate)
         .returns<AppointmentsResponse[]>();
 
-      const attendedQuery = await supabaseClient
+      const attendedQuery = await supabase
         .from('appointments')
         .select('id, attended', { count: 'exact' })
         .is('attended', true)
         .gte('startDate', fromDate)
         .lte('endDate', toDate);
 
-      const approvedQuery = await supabaseClient
+      const approvedQuery = await supabase
         .from('appointments')
         .select('id, appointments_states!inner ( id, name )', { count: 'exact' })
         .in('appointments_states.id', ['1'])
         .gte('startDate', fromDate)
         .lte('endDate', toDate);
 
-      const cancelledQuery = await supabaseClient
+      const cancelledQuery = await supabase
         .from('appointments')
         .select('id, appointments_states!inner ( id, name )', { count: 'exact' })
         .in('appointments_states.id', ['3'])
@@ -108,8 +106,5 @@ export default function useDashboard() {
         },
       };
     },
-    {
-      enabled: !!user,
-    },
-  );
+  });
 }

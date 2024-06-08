@@ -1,5 +1,5 @@
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { NextApiHandler } from 'next';
+import createClient from '../../../utils/supabase/api';
 
 const ProtectedRoute: NextApiHandler = async (req, res) => {
   const {
@@ -8,7 +8,7 @@ const ProtectedRoute: NextApiHandler = async (req, res) => {
   } = req;
 
   // Create authenticated Supabase Client
-  const supabase = createServerSupabaseClient({ req, res });
+  const supabase = createClient(req, res);
   // Check if we have a session
   const {
     data: { session },

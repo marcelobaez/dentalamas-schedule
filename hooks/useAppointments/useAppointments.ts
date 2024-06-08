@@ -1,55 +1,49 @@
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { useQuery } from '@tanstack/react-query';
+import { UseQueryOptions, useQuery } from '@tanstack/react-query';
 import { AppointmentsResponse } from '../../types/appointment';
-import { Database } from '../../types/supabase';
 import { appointmentsQuerySelect } from '../../utils/constants';
-
+import useSupabaseBrowser from '../../utils/supabase/component';
 interface AppointmentParams {
   fromDate: string | null;
   toDate: string | null;
   specialist?: string | null;
   treatment?: string | null;
   top?: number;
+  options?: Omit<
+    UseQueryOptions<AppointmentsResponse, Error>,
+    'queryKey' | 'queryFn' | 'initialData'
+  >;
 }
 
 export default function useAppointments({
   fromDate,
   toDate,
-  treatment = '',
-  specialist = '',
+  treatment,
+  specialist,
   top,
+  options,
 }: AppointmentParams) {
-  const user = useUser();
-  const supabaseClient = useSupabaseClient<Database>();
-  return useQuery(
-    ['appointments', fromDate, toDate, specialist, treatment, top],
-    async () => {
-      const filterBySpecialist = specialist;
-      const filterByTreatment = treatment;
-
-      let query = supabaseClient
+  const supabase = useSupabaseBrowser();
+  return useQuery({
+    queryKey: ['appointments', fromDate, toDate, specialist, treatment, top],
+    queryFn: async () => {
+      let query = supabase
         .from('appointments')
         .select(appointmentsQuerySelect, { count: 'exact' })
-        .order('startDate', { ascending: false });
+        .order('startDate', { ascending: false })
+        .throwOnError();
 
       if (fromDate && toDate) query = query.gte('startDate', fromDate).lte('endDate', toDate);
 
-      if (filterBySpecialist) query = query.in('specialists.id', [filterBySpecialist]);
+      if (specialist) query = query.in('specialists.id', [specialist]);
 
-      if (filterByTreatment) query = query.in('treatments.id', [filterByTreatment]);
+      if (treatment) query = query.in('treatments.id', [treatment]);
 
       if (top) query = query.limit(top);
 
-      const { data, error } = await query.returns<AppointmentsResponse[]>();
+      const { data, count } = await query.returns<AppointmentsResponse[]>();
 
-      if (error) {
-        throw new Error(`${error.message}: ${error.details}`);
-      }
-
-      return data;
+      return { data, count };
     },
-    {
-      enabled: Boolean(user),
-    },
-  );
+    enabled: !options ? true : Boolean(options.enabled),
+  });
 }

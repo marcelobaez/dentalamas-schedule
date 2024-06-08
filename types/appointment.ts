@@ -27,6 +27,8 @@ export interface AppointmentsResponse {
   notes: string;
   attended: boolean;
   appointments_states: AppointmentsState;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AppointmentRequest {

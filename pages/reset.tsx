@@ -1,67 +1,33 @@
-import {
-  createStyles,
-  Paper,
-  Title,
-  Text,
-  TextInput,
-  Button,
-  Container,
-  Center,
-  Box,
-} from '@mantine/core';
-import { useForm } from '@mantine/form';
+import { Paper, Title, Text, TextInput, Button, Container, Center, Box } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { ReactElement, useState } from 'react';
 import Logo from '../components/Layout/Logo';
-import { Database } from '../types/supabase';
-
-const useStyles = createStyles((theme) => ({
-  title: {
-    fontSize: 26,
-    fontWeight: 900,
-    fontFamily: `Greycliff CF, ${theme.fontFamily}`,
-  },
-
-  controls: {
-    [theme.fn.smallerThan('xs')]: {
-      flexDirection: 'column-reverse',
-    },
-  },
-
-  control: {
-    [theme.fn.smallerThan('xs')]: {
-      width: '100%',
-      textAlign: 'center',
-    },
-  },
-}));
+import { SubmitHandler, useForm } from 'react-hook-form';
+import classes from '../styles/pages/reset.module.css';
+import useSupabaseBrowser from '../utils/supabase/component';
+import { getURL } from '../utils';
 
 export default function ForgotPassword() {
-  const { classes } = useStyles();
   const [loading, setLoading] = useState(false);
-  const supabaseClient = useSupabaseClient<Database>();
+  const supabase = useSupabaseBrowser();
 
-  const form = useForm({
-    initialValues: {
+  // form state
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty, isSubmitting },
+  } = useForm<{ email: string }>({
+    defaultValues: {
       email: '',
-    },
-    validate: {
-      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : 'Email no valido'),
     },
   });
 
-  // Get inferred form values type
-  type FormValues = typeof form.values;
-
-  const handleLogin = async (values: FormValues) => {
+  const handleLogin = async (values: { email: string }) => {
     try {
       setLoading(true);
-      const { data, error } = await supabaseClient.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/password-reset`,
+      const { data, error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${getURL()}password-reset`,
       });
-
-      console.log(data);
 
       if (error) {
         showNotification({
@@ -87,25 +53,34 @@ export default function ForgotPassword() {
     }
   };
 
+  const onSubmit: SubmitHandler<{ email: string }> = (data) => handleLogin(data);
+
   return (
     <Container size={460} my={30}>
       <Center>
         <Logo />
       </Center>
-      <Title className={classes.title} align="center">
+      <Title className={classes.title} style={{ textAlign: 'center' }}>
         Olvidaste tu contraseña?
       </Title>
-      <Text color="dimmed" size="sm" align="center">
+      <Text c="dimmed" size="sm" style={{ textAlign: 'center' }}>
         Ingresa tu email para obtener un link de reestablecimiento
       </Text>
 
       <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
-        <form onSubmit={form.onSubmit(handleLogin)}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <TextInput
             label="Tu email"
             placeholder="me@mail.com"
             required
-            {...form.getInputProps('email')}
+            error={
+              errors.email
+                ? errors.email.type === 'pattern'
+                  ? 'Email no valido'
+                  : 'Email requerido'
+                : ''
+            }
+            {...register('email', { pattern: /^\S+@\S+$/ })}
           />
           <Button loading={loading} type="submit" fullWidth mt="xl">
             Reestablecer contraseña
@@ -117,5 +92,5 @@ export default function ForgotPassword() {
 }
 
 ForgotPassword.getLayout = function getLayout(page: ReactElement) {
-  return <Box style={{ width: '100vw', height: '100vh' }}>{page}</Box>;
+  return <Box>{page}</Box>;
 };

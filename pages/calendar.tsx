@@ -1,31 +1,21 @@
-import { createServerSupabaseClient, User } from '@supabase/auth-helpers-nextjs';
 import { GetServerSidePropsContext } from 'next';
-import { dehydrate, QueryClient } from '@tanstack/react-query';
 import useAppointments from '../hooks/useAppointments/useAppointments';
 import Head from 'next/head';
 import {
   Avatar,
   Badge,
   Button,
-  Center,
-  Container,
-  createStyles,
   Grid,
   Group,
   LoadingOverlay,
-  MantineTheme,
-  Menu,
   Paper,
-  ScrollArea,
   Select,
-  Skeleton,
   Stack,
   Text,
   Title,
-  useMantineTheme,
 } from '@mantine/core';
 import FullCalendar from '@fullcalendar/react';
-import { DateSelectArg, DatesSetArg, EventClickArg, EventContentArg } from '@fullcalendar/core';
+import { DateSelectArg, EventClickArg } from '@fullcalendar/core';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -34,20 +24,20 @@ import esLocale from '@fullcalendar/core/locales/es';
 import { getAvatarFromFullName } from '../utils/getAvatarName';
 import useTreatments from '../hooks/useTreatments/useTreatments';
 import useSpecialists from '../hooks/useSpecialists/useSpecialists';
-import { IconCalendar, IconForbid2, IconPlus } from '@tabler/icons';
+import { IconCalendar, IconForbid2, IconPlus } from '@tabler/icons-react';
 import { openContextModal, useModals } from '@mantine/modals';
 import AppointmentsCreateModal from '../components/features/AppointmentsCreateModal/AppointmentsCreateModal';
 import { useState } from 'react';
-import { DateRangePickerValue } from '@mantine/dates';
 import dayjs from 'dayjs';
 import {
   AppointmentState,
   mantineStateColors,
   stateColors,
-} from '../components/features/AppointmentsTable/AppointmentsTable';
+} from '../components/features/AppointmentsTable/AppointmentsTable.utils';
 import { useIsMobile } from '../hooks/useIsMobile/useIsMobile';
 import 'dayjs/locale/es-mx';
 import { AppointmentsResponse } from '../types/appointment';
+import { createClient } from '../utils/supabase/server-props';
 
 enum Specialist {
   Talamas = 1,
@@ -78,12 +68,12 @@ const ScheduleModal = ({ dateRange, onBlock, onSchedule }: ScheduleModalProps) =
   const to = dayjs(dateRange[1]).format('HH:mm');
   return (
     <Stack>
-      <Button leftIcon={<IconForbid2 />} color="red">
+      <Button leftSection={<IconForbid2 />} color="red">
         {`Bloquear ${from} - ${to}`}
       </Button>
       <Button
         onClick={() => onSchedule()}
-        leftIcon={<IconCalendar />}
+        leftSection={<IconCalendar />}
       >{`Agendar ${from} - ${to}`}</Button>
     </Stack>
   );
@@ -93,14 +83,14 @@ const EventDetails = ({
   eventData: { timeText, title, patient, specialist, state },
 }: EventDetailsProps) => {
   return (
-    <Stack spacing={'xs'} p="sm">
-      <Text size={'xs'}>{`${timeText} - ${title}`}</Text>
-      <Group spacing={'xs'}>
-        <Text size={'sm'} weight={500}>
+    <Stack gap={'xs'} p="sm">
+      <Text size={'xs'}>{`${dayjs(timeText).format('DD/MM/YYYY HH:mm')} - ${title}`}</Text>
+      <Group gap={'xs'}>
+        <Text size={'sm'} fw={500}>
           {patient}
         </Text>
       </Group>
-      <Group spacing={'xs'}>
+      <Group gap={'xs'}>
         <Avatar radius={'xl'} size={20}>
           {getAvatarFromFullName(specialist)}
         </Avatar>
@@ -113,57 +103,7 @@ const EventDetails = ({
   );
 };
 
-const renderEventContent = (
-  eventContent: EventContentArg,
-  theme: MantineTheme,
-  classes: Record<'dropdown', string>,
-) => {
-  const {
-    timeText,
-    event: {
-      title,
-      _def: {
-        extendedProps: { specialist, state, patient },
-      },
-    },
-  } = eventContent;
-
-  return (
-    <Menu offset={1} withArrow withinPortal position="top" classNames={classes}>
-      <Menu.Target>
-        <Stack spacing={'xs'}>
-          <Text size={'xs'}>{timeText}</Text>
-          <Text size={'xs'} weight={500}>
-            {title}
-          </Text>
-        </Stack>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Stack spacing={'xs'} p="sm">
-          <Text size={'xs'}>{`${timeText} - ${title}`}</Text>
-          <Group spacing={'xs'}>
-            <Text size={'sm'} weight={500}>
-              {patient}
-            </Text>
-          </Group>
-          <Group spacing={'xs'}>
-            <Avatar radius={'xl'} size={20} color={theme.colors.dark[4]}>
-              {getAvatarFromFullName(specialist)}
-            </Avatar>
-            <Text size="sm">{specialist}</Text>
-            <Badge color={state ? mantineStateColors[state.id as AppointmentState] : 'gray'}>
-              {state ? state.name : 'N/D'}
-            </Badge>
-          </Group>
-        </Stack>
-      </Menu.Dropdown>
-    </Menu>
-  );
-};
-
 export default function Calendar() {
-  const theme = useMantineTheme();
-
   const [selectedSp, setSelectedSp] = useState<string | null>('');
   const [selectedTr, setSelectedTr] = useState<string | null>('');
 
@@ -174,9 +114,8 @@ export default function Calendar() {
     treatment: selectedTr,
   });
 
-  const appointmentsData = data || [];
-  const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
-  const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
+  const { data: treatmentsData } = useTreatments();
+  const { data: specialistsData } = useSpecialists();
   const modals = useModals();
   const isMobile = useIsMobile();
 
@@ -261,9 +200,9 @@ export default function Calendar() {
       </Head>
       <Grid>
         <Grid.Col span={12}>
-          <Group position="apart" align={'center'}>
+          <Group justify="space-between" align={'center'}>
             <Title order={2}>Calendario</Title>
-            <Group position="apart">
+            <Group justify="space-between">
               {specialistsData && treatmentsData && (
                 <>
                   <Select
@@ -274,7 +213,7 @@ export default function Calendar() {
                         label: 'Todos los especialistas',
                         value: '',
                       },
-                      ...specialistsData.map((item) => ({
+                      ...specialistsData.data.map((item) => ({
                         label: `${item.firstName} ${item.lastName}`,
                         value: String(item.id),
                       })),
@@ -297,7 +236,7 @@ export default function Calendar() {
                 </>
               )}
               <Button
-                leftIcon={<IconPlus size={16} />}
+                leftSection={<IconPlus size={16} />}
                 onClick={() => openCreateAppointmentModal()}
               >
                 Nuevo turno
@@ -306,50 +245,48 @@ export default function Calendar() {
           </Group>
         </Grid.Col>
         <Grid.Col span={12}>
-          <Paper shadow="xs" p="md" sx={{ height: 'calc(100vh - 170px)', position: 'relative' }}>
+          <Paper shadow="xs" p="md">
             {isLoading && <LoadingOverlay visible />}
-            <ScrollArea sx={{ height: '100%' }}>
-              <FullCalendar
-                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-                editable
-                selectable
-                events={appointmentsData.map((item) => {
-                  const appointment = item as AppointmentsResponse;
-                  return {
-                    id: String(item.id),
-                    title: appointment.treatments.name,
-                    start: new Date(appointment.startDate),
-                    end: new Date(appointment.endDate),
-                    color: appointment.appointments_states
-                      ? stateColors[appointment.appointments_states.id as AppointmentState]
-                      : 'blue',
-                    state: appointment.appointments_states
-                      ? {
-                          id: appointment.appointments_states.id,
-                          name: appointment.appointments_states.name,
-                        }
-                      : null,
-                    specialist: `${appointment.specialists.firstName} ${appointment.specialists.lastName}`,
-                    patient: `${appointment.patients.firstName} ${appointment.patients.lastName}`,
-                  };
-                })}
-                select={(arg: DateSelectArg) => openScheduleModal(arg)}
-                // datesSet={(arg: DatesSetArg) => {
-                //   console.log(arg);
-                // }}
-                locale={esLocale}
-                initialView={'timeGridWeek'}
-                slotMinTime="07:00:00"
-                slotMaxTime="23:00:00"
-                eventClick={(arg: EventClickArg) => openEventModal(arg)}
-                // eventContent={(event) => renderEventContent(event, theme, classes)}
-                headerToolbar={{
-                  left: 'prev today next',
-                  center: 'title',
-                  right: 'dayGridMonth timeGridWeek timeGridDay',
-                }}
-              />
-            </ScrollArea>
+            <FullCalendar
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+              editable
+              selectable
+              events={
+                data
+                  ? data.data?.map((item) => {
+                      const appointment = item as AppointmentsResponse;
+                      return {
+                        id: String(item.id),
+                        title: appointment.treatments.name,
+                        start: new Date(appointment.startDate),
+                        end: new Date(appointment.endDate),
+                        color: appointment.appointments_states
+                          ? stateColors[appointment.appointments_states.id as AppointmentState]
+                          : 'blue',
+                        state: appointment.appointments_states
+                          ? {
+                              id: appointment.appointments_states.id,
+                              name: appointment.appointments_states.name,
+                            }
+                          : null,
+                        specialist: `${appointment.specialists.firstName} ${appointment.specialists.lastName}`,
+                        patient: `${appointment.patients.firstName} ${appointment.patients.lastName}`,
+                      };
+                    })
+                  : []
+              }
+              select={(arg: DateSelectArg) => openScheduleModal(arg)}
+              locale={esLocale}
+              initialView={'timeGridWeek'}
+              slotMinTime="07:00:00"
+              slotMaxTime="23:00:00"
+              eventClick={(arg: EventClickArg) => openEventModal(arg)}
+              headerToolbar={{
+                left: 'prev today next',
+                center: 'title',
+                right: 'dayGridMonth timeGridWeek timeGridDay',
+              }}
+            />
           </Paper>
         </Grid.Col>
       </Grid>
@@ -358,57 +295,22 @@ export default function Calendar() {
 }
 
 export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
-  // Create authenticated Supabase Client
-  const supabase = createServerSupabaseClient(ctx);
-  // Check if we have a session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const supabase = createClient(ctx);
 
-  if (!session)
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error || !data) {
     return {
       redirect: {
         destination: '/login',
         permanent: false,
       },
     };
-
-  const queryClient = new QueryClient();
-
-  // Get appointments
-  // await queryClient.prefetchQuery(['appointments', '', '', '', ''], async () => {
-  //   const { data, error, count } = await supabaseServerClient(ctx)
-  //     .from<AppointmentsResponse>('appointments')
-  //     .select(appointmentsQuerySelect, { count: 'exact' });
-
-  //   if (error) throw new Error(`${error.message}: ${error.details}`);
-
-  //   return data;
-  // });
-
-  await queryClient.prefetchQuery(['treatments'], async () => {
-    // Get treatments list
-    const { data, error } = await supabase.from('treatments').select('id, name');
-
-    if (error) throw new Error(`${error.message}: ${error.details}`);
-
-    return data;
-  });
-
-  await queryClient.prefetchQuery(['specialists'], async () => {
-    // Get treatments list
-    const { data, error } = await supabase
-      .from('specialists')
-      .select('id, firstName, lastName, title');
-
-    if (error) throw new Error(`${error.message}: ${error.details}`);
-
-    return data;
-  });
+  }
 
   return {
     props: {
-      dehydratedState: dehydrate(queryClient),
+      user: data.user,
     },
   };
 };

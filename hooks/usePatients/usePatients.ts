@@ -1,28 +1,37 @@
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { useQuery } from '@tanstack/react-query';
+import { RequestParams } from '../../types/api';
+import { createClient } from '../../utils/supabase/client';
 import { Patient } from '../../types/patient';
-import { Database } from '../../types/supabase';
 
-export default function usePatients() {
-  const user = useUser();
-  const supabaseClient = useSupabaseClient<Database>();
-  return useQuery(
-    ['patients'],
-    async () => {
-      const { data, error } = await supabaseClient
+export default function usePatients({
+  from = 0,
+  to = 10,
+  sortBy = 'firstName',
+  ascending = false,
+  searchTerm,
+}: RequestParams = {}) {
+  const supabase = createClient();
+  return useQuery({
+    queryKey: ['patients', from, to, sortBy, ascending, searchTerm],
+    queryFn: async () => {
+      let query = supabase
         .from('patients')
-        .select('id, firstName, lastName, phone, email, created_at, created_by')
-        .order('lastName', { ascending: true })
-        .order('created_at', { ascending: false });
+        .select(
+          'id, firstName, lastName, phone, email, created_at, created_by, streetAddress, zipCode, city',
+          { count: 'exact' },
+        )
+        .order(sortBy, { ascending })
+        .range(from, to - 1)
+        .throwOnError();
 
-      if (error) {
-        throw new Error(`${error.message}: ${error.details}`);
-      }
+      if (searchTerm)
+        query = query.or(
+          `lastName.ilike.%${searchTerm}%, firstName.ilike.%${searchTerm}%, phone.ilike.%${searchTerm}%`,
+        );
 
-      return data;
+      const { data, count } = await query.returns<Patient[]>();
+
+      return { data, count };
     },
-    {
-      enabled: !!user,
-    },
-  );
+  });
 }

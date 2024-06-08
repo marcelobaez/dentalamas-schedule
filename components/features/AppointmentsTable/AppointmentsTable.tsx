@@ -1,150 +1,108 @@
 import {
   ActionIcon,
   Avatar,
-  Badge,
-  Box,
-  CheckIcon,
-  ColorSwatch,
-  createStyles,
+  Button,
+  Grid,
   Group,
-  ScrollArea,
-  Stack,
-  Table,
+  LoadingOverlay,
+  Select,
   Text,
   Tooltip,
-  useMantineTheme,
 } from '@mantine/core';
-import { openConfirmModal, useModals } from '@mantine/modals';
+import { openConfirmModal, openContextModal, useModals } from '@mantine/modals';
 import { showNotification } from '@mantine/notifications';
-import { IconEdit, IconCheck, IconHourglass, IconBan, IconUser, IconTrash } from '@tabler/icons';
+import {
+  IconEdit,
+  IconCheck,
+  IconTrash,
+  IconCalendar,
+  IconPlus,
+  IconClock2,
+} from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { DateTime } from 'luxon';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useIsMobile } from '../../../hooks/useIsMobile/useIsMobile';
 import { AppointmentsResponse } from '../../../types/appointment';
-import { getAvatarFromNames } from '../../../utils/getAvatarName';
 import AppointmentsEditModal from '../AppointmentsEditModal/AppointmentsEditModal';
+import {
+  MantineReactTable,
+  MRT_PaginationState,
+  MRT_SortingState,
+  useMantineReactTable,
+} from 'mantine-react-table';
+import dayjs from 'dayjs';
+import useAppointments from '../../../hooks/useAppointments/useAppointments';
+import { useAppointmentColumns } from './data/columns';
+import { DatePickerInput, DatesRangeValue } from '@mantine/dates';
+import AppointmentsCreateModal from '../AppointmentsCreateModal/AppointmentsCreateModal';
+import useTreatments from '../../../hooks/useTreatments/useTreatments';
+import useSpecialists from '../../../hooks/useSpecialists/useSpecialists';
+import { getMantineStyleAndOpts } from '../../../utils';
 
-interface TableProps {
-  data: AppointmentsResponse[];
-}
-
-export enum AppointmentState {
-  Approved = 1,
-  Pending,
-  Cancelled,
-  Rejected,
-  Rescheduled = 6,
-}
-
-export const stateColors = {
-  [AppointmentState.Approved]: '#69DB7C',
-  [AppointmentState.Pending]: '#FFA94D',
-  [AppointmentState.Cancelled]: '#FF8787',
-  [AppointmentState.Rejected]: '#5C5F66',
-  [AppointmentState.Rescheduled]: '#CED4DA',
-};
-
-export const mantineStateColors = {
-  [AppointmentState.Approved]: 'green',
-  [AppointmentState.Pending]: 'orange', //gray.4 in theme. TODO: find a way to change it to named index
-  [AppointmentState.Cancelled]: 'red',
-  [AppointmentState.Rejected]: 'black',
-  [AppointmentState.Rescheduled]: 'gray',
-};
-
-const getSwatchColorComponent = (state: AppointmentState, value: string) => {
-  return (
-    <Group spacing={'xs'}>
-      <ColorSwatch size={16} color={mantineStateColors[state]} sx={{ color: '#fff' }}>
-        {/* {stateIcons[state]} */}
-      </ColorSwatch>
-      <Text>{value}</Text>
-    </Group>
-  );
-};
-
-const mapAttendedStateToMsg = (state: null | boolean) => {
-  switch (state) {
-    case null:
-      return 'N/D';
-    case true:
-      return 'SI';
-    case false:
-      return 'NO';
-    default:
-      return 'N/D';
-  }
-};
-
-const mapAttendedStateToColor = (state: null | boolean) => {
-  switch (state) {
-    case null:
-      return 'gray';
-    case true:
-      return 'green';
-    case false:
-      return 'red';
-    default:
-      return 'gray';
-  }
-};
-
-const useStyles = createStyles((theme) => ({
-  header: {
-    position: 'sticky',
-    top: 0,
-    backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[7] : theme.white,
-    transition: 'box-shadow 150ms ease',
-    zIndex: 10,
-
-    '&::after': {
-      content: '""',
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      borderBottom: `1px solid ${
-        theme.colorScheme === 'dark' ? theme.colors.dark[3] : theme.colors.gray[2]
-      }`,
-    },
-  },
-
-  scrolled: {
-    boxShadow: theme.shadows.sm,
-  },
-}));
-
-export default function AppointmentsTable({ data }: TableProps) {
+export default function AppointmentsTable() {
   const queryClient = useQueryClient();
-  const theme = useMantineTheme();
   const modals = useModals();
   const isMobile = useIsMobile();
-  const { classes, cx } = useStyles();
-  const [scrolled, setScrolled] = useState(false);
+  const columns = useAppointmentColumns();
+  const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
+  const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
+
+  const [seletedSp, setSelectedSp] = useState<string | null>('');
+  const [seletedTr, setSelectedTr] = useState<string | null>('');
+
+  const [dateRangeValue, setRangeValue] = useState<DatesRangeValue>([
+    dayjs().startOf('week').add(1, 'day').toDate(),
+    dayjs().endOf('week').toDate(),
+  ]);
+
+  const [sorting, setSorting] = useState<MRT_SortingState>([
+    {
+      id: 'lastName',
+      desc: false,
+    },
+  ]);
+  const [pagination, setPagination] = useState<MRT_PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  // Get appointments with filters
+  const { data, isLoading, isError, isFetching } = useAppointments({
+    fromDate: dayjs(dateRangeValue[0]).isValid() ? dayjs(dateRangeValue[0]).format() : null,
+    toDate: dayjs(dateRangeValue[1]).isValid() ? dayjs(dateRangeValue[1]).format() : null,
+    specialist: seletedSp,
+    treatment: seletedTr,
+    options: {
+      enabled: Boolean(dateRangeValue[0]) && Boolean(dateRangeValue[1]),
+    },
+  });
+
+  const memoData = useMemo(() => {
+    const fetchedAppointments = data?.data ?? [];
+    const totalRowCount = data?.count ?? 0;
+    return { fetchedAppointments, totalRowCount };
+  }, [data]);
 
   // Create appointment mutation
-  const { mutate, isLoading: isMutating } = useMutation(
-    (id) => axios.delete(`/api/appointments/${id}`),
-    {
-      onSuccess: (newAppointment: AppointmentsResponse, id: string) => {
-        queryClient.setQueryData(['appointments'], newAppointment);
-        // Show success notification
-        showNotification({
-          title: 'Exito!',
-          message: 'Se elimino el turno correctamente',
-          color: 'green',
-          icon: <IconCheck />,
-        });
-      },
-      // Always refetch after error or success:
-      onSettled: () => {
-        queryClient.invalidateQueries(['appointments']);
-        modals.closeModal('appointmentsEditModal');
-      },
+  const { mutate } = useMutation({
+    mutationFn: (id) => axios.delete(`/api/appointments/${id}`),
+    onSuccess: (newAppointment: AppointmentsResponse, id: string) => {
+      queryClient.setQueryData(['appointments'], newAppointment);
+      // Show success notification
+      showNotification({
+        title: 'Exito!',
+        message: 'Se elimino el turno correctamente',
+        color: 'green',
+        icon: <IconCheck />,
+      });
     },
-  );
+    // Always refetch after error or success:
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      modals.closeModal('appointmentsEditModal');
+    },
+  });
 
   const openEditModal = (item: AppointmentsResponse) => {
     modals.openModal({
@@ -169,115 +127,146 @@ export default function AppointmentsTable({ data }: TableProps) {
       onConfirm: () => mutate(id),
     });
 
+  const openCreatePatientModal = () => {
+    openContextModal({
+      modal: 'patientsCreate',
+      size: 460,
+      title: 'Registrar paciente',
+      innerProps: {},
+    });
+  };
+
+  const openCreateAppointmentModal = () => {
+    modals.openModal({
+      modalId: 'appointmentsCreateModal',
+      centered: true,
+      size: isMobile ? '100%' : '55%',
+      title: 'Registrar turno',
+      children: (
+        <AppointmentsCreateModal
+          onClose={() => {
+            modals.closeModal('appointmentsCreateModal');
+          }}
+          onCreatePatient={() => openCreatePatientModal()}
+        />
+      ),
+    });
+  };
+
+  const table = useMantineReactTable({
+    columns,
+    data: memoData.fetchedAppointments,
+    rowCount: memoData.totalRowCount,
+    ...getMantineStyleAndOpts(isError),
+    initialState: { showColumnFilters: false },
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    renderRowActions: ({ row }) => (
+      <Group>
+        <Tooltip label="Editar turno">
+          <ActionIcon size="1rem" variant="transparent">
+            <IconEdit onClick={() => openEditModal(row.original)} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Eliminar turno">
+          <ActionIcon
+            variant="transparent"
+            onClick={() => openDeleteModal(String(row.original.id))}
+            color="red"
+            size="1rem"
+          >
+            <IconTrash stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
+    ),
+    renderTopToolbarCustomActions: () => (
+      <Group align="center" gap="xs">
+        <Avatar color="violet" radius="md">
+          <IconClock2 size="1.3rem" />
+        </Avatar>
+        <Text fz="1.2rem" fw={600}>
+          {memoData.totalRowCount}
+        </Text>
+        <Text fz="0.875rem" c="dimmed">
+          Turnos
+        </Text>
+      </Group>
+    ),
+    state: {
+      density: 'xs',
+      isLoading,
+      pagination,
+      showAlertBanner: isError,
+      showProgressBars: isFetching,
+      sorting,
+    },
+  });
+
+  if (isLoadingTreatments || isLoadingSpecialist) {
+    return <LoadingOverlay visible />;
+  }
+
+  if (!treatmentsData || !specialistsData) {
+    return <div>Error...</div>;
+  }
+
   return (
-    <ScrollArea sx={{ height: '100%' }} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
-      <Table highlightOnHover sx={{ minWidth: 800 }} verticalSpacing="xs">
-        <thead className={cx(classes.header, { [classes.scrolled]: scrolled })}>
-          <tr>
-            <th>Turno</th>
-            <th>Paciente</th>
-            <th>Doctor</th>
-            <th>Motivo</th>
-            <th>Estado</th>
-            <th>Asistio</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {/* Render rows */}
-          {data && data.length > 0 ? (
-            data.map((item, idx) => (
-              <tr key={`treat-row-${idx}`}>
-                <td>
-                  <Group>
-                    <Text weight={500}>
-                      {new Date(item.startDate).toLocaleString('es-AR', {
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </Text>
-                    <Badge radius="xs">{`${new Date(item.startDate).toLocaleString(
-                      'es-AR',
-                      DateTime.TIME_SIMPLE,
-                    )} - ${new Date(item.endDate).toLocaleString(
-                      'es-AR',
-                      DateTime.TIME_SIMPLE,
-                    )}`}</Badge>
-                  </Group>
-                </td>
-                <td>
-                  <Box sx={{ flex: 1 }}>
-                    <Text
-                      weight={500}
-                      size="sm"
-                    >{`${item.patients.firstName} ${item.patients.lastName}`}</Text>
-                    <Text color="dimmed" size="xs">
-                      {item.patients.phone}
-                    </Text>
-                  </Box>
-                </td>
-                <td>
-                  <Group spacing="sm">
-                    <Avatar
-                      color="pink"
-                      size={26}
-                      radius={26}
-                      sx={(th) => ({
-                        position: 'initial',
-                      })}
-                    >
-                      {getAvatarFromNames(item.specialists.firstName, item.specialists.lastName)}
-                    </Avatar>
-                    <Text size="sm" weight={500}>
-                      {`${item.specialists.firstName} ${item.specialists.lastName}`}
-                    </Text>
-                  </Group>
-                </td>
-                <td>
-                  <Text size="sm">{item.treatments.name}</Text>
-                </td>
-                <td>
-                  {item.appointments_states
-                    ? getSwatchColorComponent(
-                        item.appointments_states.id,
-                        item.appointments_states.name,
-                      )
-                    : 'N/D'}
-                </td>
-                <td>
-                  <Badge color={mapAttendedStateToColor(item.attended)}>
-                    {mapAttendedStateToMsg(item.attended)}
-                  </Badge>
-                </td>
-                <td>
-                  <Group>
-                    <Tooltip label="Editar turno">
-                      <ActionIcon
-                        sx={(th) => ({
-                          position: 'initial',
-                        })}
-                      >
-                        <IconEdit size={18} onClick={() => openEditModal(item)} />
-                      </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="Eliminar turno">
-                      <ActionIcon onClick={() => openDeleteModal(String(item.id))} color="red">
-                        <IconTrash size={18} stroke={1.5} />
-                      </ActionIcon>
-                    </Tooltip>
-                  </Group>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td>
-                <Text size="md">Aun no se agendaron turnos</Text>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </Table>
-    </ScrollArea>
+    <>
+      <Grid.Col span={12}>
+        <Group justify="space-between">
+          <Text fw={600} size={'xl'}>
+            Turnos
+          </Text>
+          <Group justify="end">
+            <DatePickerInput
+              // style={{ minWidth: '350px' }}
+              leftSection={<IconCalendar size={16} />}
+              placeholder="Elija el rango de fechas"
+              type="range"
+              value={dateRangeValue}
+              onChange={setRangeValue}
+              locale="es-mx"
+            />
+            <Select
+              value={seletedSp}
+              onChange={setSelectedSp}
+              data={[
+                {
+                  label: 'Todos los especialistas',
+                  value: '',
+                },
+                ...(specialistsData.data
+                  ? specialistsData.data.map((item) => ({
+                      label: `${item.firstName} ${item.lastName}`,
+                      value: String(item.id),
+                    }))
+                  : []),
+              ]}
+            />
+            <Select
+              value={seletedTr}
+              onChange={setSelectedTr}
+              data={[
+                {
+                  label: 'Todos los tipos',
+                  value: '',
+                },
+                ...treatmentsData.map((item) => ({
+                  label: item.name,
+                  value: String(item.id),
+                })),
+              ]}
+            />
+            <Button leftSection={<IconPlus />} onClick={() => openCreateAppointmentModal()}>
+              Nuevo turno
+            </Button>
+          </Group>
+        </Group>
+      </Grid.Col>
+      <Grid.Col span={12}>
+        <MantineReactTable table={table} />
+      </Grid.Col>
+    </>
   );
 }

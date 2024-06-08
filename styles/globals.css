@@ -1,9 +1,9 @@
-html,
+/* html,
 body {
   padding: 0;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
-    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell,
+    Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
 }
 
 a {
@@ -23,4 +23,42 @@ a {
     color: white;
     background: black;
   }
+} */
+
+/* :root {
+  --fc-button-bg-color: red;
+} */
+
+.fc .fc-toolbar-title {
+  font-size: 1.35em;
 }
+
+.fc .fc-button {
+  font-size: var(--button-fz, var(--mantine-font-size-sm));
+}
+
+.fc table {
+  font-size: 0.9rem;
+}
+
+/* .fc .fc-toolbar {
+  flex-wrap: wrap;
+} */
+
+@media (max-width: 767px) {
+  .fc-toolbar.fc-header-toolbar {
+    display: flex;
+    flex-direction: column;
+  }
+  .fc-toolbar.fc-header-toolbar .fc-toolbar-chunk:nth-child(1) {
+    order: 3;
+  }
+  .fc-toolbar.fc-header-toolbar .fc-toolbar-chunk:nth-child(2) {
+    order: 1;
+  }
+  .fc-toolbar.fc-header-toolbar .fc-toolbar-chunk:nth-child(3) {
+    order: 2;
+  }
+}
+
+/* font-size: var(--button-fz, var(--mantine-font-size-sm)); */

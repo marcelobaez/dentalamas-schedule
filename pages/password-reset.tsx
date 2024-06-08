@@ -1,6 +1,5 @@
 import { ReactElement } from 'react';
 import {
-  createStyles,
   Paper,
   Title,
   Text,
@@ -12,19 +11,17 @@ import {
   Progress,
   PasswordInput,
 } from '@mantine/core';
-import { useRouter } from 'next/router';
-import { useForm } from '@mantine/form';
 import { useInputState } from '@mantine/hooks';
 import { showNotification } from '@mantine/notifications';
-// import { supabaseClient } from '@supabase/auth-helpers-nextjs';
-import { IconCheck, IconX } from '@tabler/icons';
+import { IconCheck, IconX } from '@tabler/icons-react';
 import Logo from '../components/Layout/Logo';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { Database } from '../types/supabase';
+import { SubmitHandler, useForm } from 'react-hook-form';
+import classes from '../styles/pages/password-reset.module.css';
+import useSupabaseBrowser from '../utils/supabase/component';
 
 function PasswordRequirement({ meets, label }: { meets: boolean; label: string }) {
   return (
-    <Text color={meets ? 'teal' : 'red'} mt={5} size="sm">
+    <Text c={meets ? 'teal' : 'red'} mt={5} size="sm">
       <Center inline>
         {meets ? <IconCheck size={14} stroke={1.5} /> : <IconX size={14} stroke={1.5} />}
         <Box ml={7}>{label}</Box>
@@ -51,32 +48,10 @@ function getStrength(password: string) {
   return Math.max(100 - (100 / (requirements.length + 1)) * multiplier, 0);
 }
 
-const useStyles = createStyles((theme) => ({
-  title: {
-    fontSize: 26,
-    fontWeight: 900,
-    fontFamily: `Greycliff CF, ${theme.fontFamily}`,
-  },
-
-  controls: {
-    [theme.fn.smallerThan('xs')]: {
-      flexDirection: 'column-reverse',
-    },
-  },
-
-  control: {
-    [theme.fn.smallerThan('xs')]: {
-      width: '100%',
-      textAlign: 'center',
-    },
-  },
-}));
-
 export default function PasswordReset() {
-  const { classes } = useStyles();
   const [value, setValue] = useInputState('');
   const strength = getStrength(value);
-  const supabaseClient = useSupabaseClient<Database>();
+  const supabase = useSupabaseBrowser();
 
   const checks = requirements.map((requirement, index) => (
     <PasswordRequirement key={index} label={requirement.label} meets={requirement.re.test(value)} />
@@ -86,7 +61,7 @@ export default function PasswordReset() {
     .fill(0)
     .map((_, index) => (
       <Progress
-        styles={{ bar: { transitionDuration: '0ms' } }}
+        styles={{ section: { transitionDuration: '0ms' } }}
         value={
           value.length > 0 && index === 0 ? 100 : strength >= ((index + 1) / 4) * 100 ? 100 : 0
         }
@@ -96,20 +71,20 @@ export default function PasswordReset() {
       />
     ));
 
-  const form = useForm({
-    initialValues: {
+  // form state
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty, isSubmitting },
+  } = useForm<{ password: string }>({
+    defaultValues: {
       password: '',
     },
   });
 
-  console.log(strength);
-
-  // Get inferred form values type
-  type FormValues = typeof form.values;
-
   const handlePaswordChange = async () => {
     try {
-      const { data, error } = await supabaseClient.auth.updateUser({ password: value });
+      const { data, error } = await supabase.auth.updateUser({ password: value });
 
       if (error) {
         showNotification({
@@ -134,20 +109,22 @@ export default function PasswordReset() {
     }
   };
 
+  const onSubmit: SubmitHandler<{ password: string }> = (data) => handlePaswordChange();
+
   return (
     <Container size={460} my={30}>
       <Center>
         <Logo />
       </Center>
-      <Title className={classes.title} align="center">
+      <Title className={classes.title} style={{ textAlign: 'center' }}>
         Actualizacion de contraseña
       </Title>
-      <Text color="dimmed" size="sm" align="center">
+      <Text c="dimmed" size="sm" style={{ textAlign: 'center' }}>
         Ingresa una nueva contraseña que cumpla con los requisitos
       </Text>
 
       <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
-        <form onSubmit={form.onSubmit((values) => handlePaswordChange())}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <PasswordInput
             value={value}
             onChange={setValue}
@@ -156,7 +133,7 @@ export default function PasswordReset() {
             required
           />
 
-          <Group spacing={5} grow mt="xs" mb="md">
+          <Group gap={5} grow mt="xs" mb="md">
             {bars}
           </Group>
 
@@ -169,19 +146,11 @@ export default function PasswordReset() {
             Actualizar contraseña
           </Button>
         </form>
-        {/* <Group position="apart" mt="lg" className={classes.controls}>
-          <Anchor color="dimmed" size="sm" className={classes.control}>
-            <Center inline>
-              <IconArrowLeft size={12} stroke={1.5} />
-              <Box ml={5}>Regresar al inicio</Box>
-            </Center>
-          </Anchor>
-        </Group> */}
       </Paper>
     </Container>
   );
 }
 
 PasswordReset.getLayout = function getLayout(page: ReactElement) {
-  return <Box style={{ width: '100vw', height: '100vh' }}>{page}</Box>;
+  return <Box>{page}</Box>;
 };

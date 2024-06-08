@@ -1,38 +1,39 @@
 import {
   ActionIcon,
-  Autocomplete,
-  AutocompleteItem,
   Avatar,
   Button,
+  CloseButton,
+  Combobox,
   Grid,
   Group,
   Loader,
   Radio,
   Select,
+  SelectProps,
   Stack,
   Text,
+  TextInput,
   Textarea,
   Tooltip,
+  rem,
+  useCombobox,
 } from '@mantine/core';
-import { Calendar, TimeRangeInput } from '@mantine/dates';
-import { useForm } from '@mantine/form';
-import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
+import { DatePicker, DateValue, TimeInput } from '@mantine/dates';
+import { useDebouncedValue } from '@mantine/hooks';
 import { showNotification } from '@mantine/notifications';
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { IconCheck, IconClock, IconUserPlus } from '@tabler/icons';
+import { IconCheck, IconClock, IconUserPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { forwardRef, useState } from 'react';
+import { useState } from 'react';
 import useAppointmentsStates from '../../../hooks/useAppointmentStates/useAppointmentStates';
-import { useIsMobile } from '../../../hooks/useIsMobile/useIsMobile';
 import useSpecialists from '../../../hooks/useSpecialists/useSpecialists';
 import useTreatments from '../../../hooks/useTreatments/useTreatments';
-import { AppoinmentFormValues, AppointmentsResponse } from '../../../types/appointment';
-import { Patient } from '../../../types/patient';
-import { Database } from '../../../types/supabase';
+import { AppointmentsResponse } from '../../../types/appointment';
 import { getBooleanFromString } from '../../../utils/forms';
 import { getAvatarFromFullName } from '../../../utils/getAvatarName';
+import { Controller, SubmitHandler, useForm } from 'react-hook-form';
+import useSupabaseBrowser from '../../../utils/supabase/component';
 
 interface ItemProps extends React.ComponentPropsWithoutRef<'div'> {
   image: string;
@@ -49,6 +50,17 @@ interface AppointmentRequest {
   specialist_id: number;
 }
 
+type FormValues = {
+  patient: string;
+  specialist: string;
+  treatment: string;
+  notes: string;
+  attended: boolean | null;
+  state: string;
+  startDate: Date;
+  endDate: Date;
+};
+
 interface ModalProps {
   onClose: () => void;
   onCreatePatient: () => void;
@@ -57,38 +69,50 @@ interface ModalProps {
 
 const EXISTING_USERS = 'Pacientes encontrados';
 
-const SelectItem = forwardRef<HTMLDivElement, ItemProps>(
-  ({ image, label, description, ...others }: ItemProps, ref) => (
-    <div ref={ref} {...others}>
-      <Group noWrap>
-        {image.length > 0 ? (
-          <Avatar src={image} />
-        ) : (
-          <Avatar color="cyan" radius={'xl'}>
-            {getAvatarFromFullName(label)}
-          </Avatar>
-        )}
-        <div>
-          <Text size="sm">{label}</Text>
-          <Text size="xs" color="dimmed">
-            {description}
-          </Text>
-        </div>
-      </Group>
-    </div>
-  ),
-);
+export function createNewDate(existingDate: Date, timeString: string) {
+  // Parse the hour and minute from the time string
+  const [hour, minute] = timeString.split(':').map(Number);
 
-SelectItem.displayName = 'SelectItem';
+  // Create a new dayjs object from the existing date
+  let newDate = dayjs(existingDate);
+
+  // Set the hour and minute
+  newDate = newDate.hour(hour).minute(minute);
+
+  // Return the new date
+  return newDate.toDate();
+}
+
+function SelectOption({ image, label, description }: ItemProps) {
+  return (
+    <Group wrap="nowrap">
+      {image.length > 0 ? (
+        <Avatar src={image} />
+      ) : (
+        <Avatar color="cyan" radius={'xl'}>
+          {getAvatarFromFullName(label)}
+        </Avatar>
+      )}
+      <div>
+        <Text size="sm">{label}</Text>
+        <Text size="xs" c="dimmed">
+          {description}
+        </Text>
+      </div>
+    </Group>
+  );
+}
 
 export default function AppointmentsCreateModal({
   onClose,
   onCreatePatient,
   initialRange,
 }: ModalProps) {
+  const combobox = useCombobox({
+    onDropdownClose: () => combobox.resetSelectedOption(),
+  });
   const queryClient = useQueryClient();
   const [emptyResults, setEmptyResults] = useState(false);
-  const isMobile = useIsMobile();
   const [attendance, setAttendance] = useState('');
   // Time range state
   const now = new Date();
@@ -99,24 +123,47 @@ export default function AppointmentsCreateModal({
   const [timeRange, setTimeRange] = useState<[Date, Date]>([startTime, endTime]);
 
   // State for autocomplete
-  const [value, setValue] = useState('');
-  const [debounced] = useDebouncedValue(value, 200, { leading: true });
+  const [comboValue, setComboValue] = useState('');
+  const [debounced] = useDebouncedValue(comboValue, 200, { leading: true });
 
   //Get data for modal form
-  const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
-  const { data: specialistsData, isLoading: isLoadingSpecialist } = useSpecialists();
-  const { data: appointmentStateData, isLoading: isLoadingAppointmentsStates } =
-    useAppointmentsStates();
+  const {
+    data: treatmentsData,
+    status: isLoadingTreatments,
+    isError: isTreatmentError,
+  } = useTreatments();
+  const {
+    data: specialistsData,
+    status: isLoadingSpecialist,
+    isError: isSpecialistError,
+  } = useSpecialists();
+  const {
+    data: appointmentStateData,
+    status: isLoadingAppointmentsStates,
+    isError: isStatesError,
+  } = useAppointmentsStates();
 
-  const user = useUser();
+  const renderSelectOption: SelectProps['renderOption'] = ({ option, checked }) => (
+    <Group wrap="nowrap">
+      <Avatar color="cyan" radius={'xl'}>
+        {getAvatarFromFullName(`${option.label}`)}
+      </Avatar>
+      <div>
+        <Text size="sm">{option.label}</Text>
+        <Text size="xs" c="dimmed">
+          {specialistsData?.data.find((sp) => sp.id === parseInt(option.value))?.title}
+        </Text>
+      </div>
+    </Group>
+  );
 
-  const supabaseClient = useSupabaseClient<Database>();
+  const supabase = useSupabaseBrowser();
 
   // Search query
-  const { data: searchResults, isFetching } = useQuery(
-    ['searchPatients', debounced],
-    async () => {
-      const { data, error } = await supabaseClient
+  const { data: searchResults, isFetching } = useQuery({
+    queryKey: ['searchPatients', debounced],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from('patients')
         .select('id, firstName, lastName, email, phone')
         .ilike('lastName', `%${debounced}%`);
@@ -127,60 +174,58 @@ export default function AppointmentsCreateModal({
 
       return data;
     },
-    {
-      enabled: Boolean(user) && Boolean(debounced),
-      onSuccess: (data) => {
-        data.length === 0 && setEmptyResults(true);
-      },
-    },
-  );
+    enabled: Boolean(debounced),
+  });
 
-  const [dayValue, setDayValue] = useState<Date | null>(
-    initialRange ? initialRange[0] : new Date(),
-  );
+  // data.length === 0 && setEmptyResults(true);
 
-  const form = useForm<AppoinmentFormValues>({
-    initialValues: {
+  const [dayValue, setDayValue] = useState<Date>(initialRange ? initialRange[0] : new Date());
+
+  // form state
+  const {
+    control,
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isDirty },
+  } = useForm<FormValues>({
+    defaultValues: {
       patient: '',
       specialist: '1',
       treatment: '1',
       notes: '',
       attended: null,
       state: '2',
+      startDate: timeRange[0],
+      endDate: timeRange[1],
     },
   });
 
-  // Get inferred form values type
-  type FormValues = typeof form.values;
-
   // Create appointment mutation
-  const { mutate, isLoading: isMutating } = useMutation(
-    (values) => axios.post('/api/appointments', values),
-    {
-      onSuccess: (newAppointment: AppointmentsResponse, values: AppointmentRequest) => {
-        queryClient.setQueryData(['appointments'], newAppointment);
-        // Show success notification
-        showNotification({
-          title: 'Exito!',
-          message: 'Se agendo el turno correctamente',
-          color: 'green',
-          icon: <IconCheck />,
-        });
-        form.reset();
-      },
-      // Always refetch after error or success:
-      onSettled: () => {
-        queryClient.invalidateQueries(['appointments']);
-        onClose();
-      },
+  const createAppointmentMutation = useMutation({
+    mutationFn: (values) => axios.post('/api/appointments', values),
+    onSuccess: (newAppointment: AppointmentsResponse, values: AppointmentRequest) => {
+      queryClient.setQueryData(['appointments'], newAppointment);
+      // Show success notification
+      showNotification({
+        title: 'Exito!',
+        message: 'Se agendo el turno correctamente',
+        color: 'green',
+        icon: <IconCheck />,
+      });
     },
-  );
+    // Always refetch after error or success:
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      onClose();
+    },
+  });
 
   // form submission handler
-  const handleSubmit = async (values: FormValues) => {
+  const handleSubmitForm = async (values: FormValues) => {
     const formData = {
-      startDate: timeRange[0],
-      endDate: timeRange[1],
+      startDate: values.startDate,
+      endDate: values.endDate,
       patient_id: parseInt(values.patient),
       treatment_id: parseInt(values.treatment),
       specialist_id: parseInt(values.specialist),
@@ -189,10 +234,10 @@ export default function AppointmentsCreateModal({
       state_id: parseInt(values.state),
     };
 
-    mutate(formData);
+    createAppointmentMutation.mutate(formData);
   };
 
-  const handleDayChange = (value: Date) => {
+  const handleDayChange = (value: DateValue) => {
     // Create new ranges based on new selected day, maintaining selected hour and minutes
     const newStartTime = dayjs(value)
       .hour(dayjs(timeRange[0]).get('hour'))
@@ -203,169 +248,238 @@ export default function AppointmentsCreateModal({
       .minute(dayjs(timeRange[1]).get('minute'))
       .toDate();
 
-    setDayValue(value);
+    setDayValue(value || new Date());
     setTimeRange([newStartTime, newEndTime]);
   };
 
-  const handleTimeRangechange = (value: [Date, Date]) => {
-    // Set ranges to selected day in calendar (by default this control uses 'today')
-    const prevstartHourAndMinute = [dayjs(value[0]).get('hour'), dayjs(value[0]).get('minute')];
-    const prevendHourAndMinute = [dayjs(value[1]).get('hour'), dayjs(value[1]).get('minute')];
+  const options = (searchResults || []).map((item) => (
+    <Combobox.Option value={String(item.id)} key={item.id}>
+      <SelectOption
+        image=""
+        label={`${item.firstName} ${item.lastName}`}
+        description={item.phone}
+      />
+    </Combobox.Option>
+  ));
 
-    setTimeRange([
-      dayjs(dayValue).hour(prevstartHourAndMinute[0]).minute(prevstartHourAndMinute[1]).toDate(),
-      dayjs(dayValue).hour(prevendHourAndMinute[0]).minute(prevendHourAndMinute[1]).toDate(),
-    ]);
-  };
+  const onSubmit: SubmitHandler<FormValues> = (data) => handleSubmitForm(data);
 
-  const createPatientsData = () => {
-    let patientsList: AutocompleteItem[] = [];
-    if (searchResults) {
-      patientsList = searchResults.map((item) => ({
-        value: `${item.firstName} ${item.lastName}`,
-        label: `${item.firstName} ${item.lastName}`,
-        image: '',
-        description: item.phone,
-        group: EXISTING_USERS,
-        patient_id: item.id,
-      }));
+  const findPatient = (id: number) => {
+    const foundItem = searchResults?.find((item) => item.id === id);
+    if (foundItem) {
+      setComboValue(`${foundItem.firstName} ${foundItem.lastName}`);
     }
-
-    return patientsList;
   };
+
+  if (
+    isLoadingSpecialist === 'pending' ||
+    isLoadingTreatments === 'pending' ||
+    isLoadingAppointmentsStates === 'pending'
+  )
+    return <Loader />;
+
+  if (isTreatmentError || isSpecialistError || isStatesError) return <div>Error...</div>;
 
   return (
-    <>
-      {/* Modal content */}
-      {(isLoadingSpecialist || isLoadingTreatments || isLoadingAppointmentsStates) && <Loader />}
-      {treatmentsData && specialistsData && appointmentStateData && (
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Grid>
-            <Grid.Col sm={12} md={6}>
-              <Group align={'end'}>
-                <Autocomplete
-                  itemComponent={SelectItem}
-                  value={value}
-                  maxDropdownHeight={400}
-                  data={createPatientsData()}
-                  limit={20}
-                  onChange={setValue}
-                  rightSection={isFetching ? <Loader size={16} /> : null}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Grid>
+        <Grid.Col span={{ sm: 12, md: 6 }}>
+          <Group align={'end'}>
+            <Combobox
+              onOptionSubmit={(optionValue) => {
+                setValue('patient', optionValue, { shouldDirty: true });
+                findPatient(parseInt(optionValue));
+                combobox.closeDropdown();
+              }}
+              withinPortal={false}
+              store={combobox}
+            >
+              <Combobox.Target>
+                <TextInput
+                  {...register('patient', { required: true })}
                   label="Paciente"
-                  nothingFound={emptyResults ? 'No se encontraron pacientes' : ''}
                   placeholder="Busque por apellido del paciente"
-                  filter={(value, item) => true}
-                  onItemSubmit={(item: AutocompleteItem) =>
-                    form.setFieldValue('patient', item.patient_id)
+                  error={errors.patient ? 'Campo requerido' : null}
+                  rightSection={
+                    isFetching ? (
+                      <Loader size={16} />
+                    ) : comboValue !== null ? (
+                      <CloseButton
+                        size="sm"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => setComboValue('')}
+                        aria-label="Limpiar"
+                      />
+                    ) : null
                   }
-                  required
-                  sx={() => ({
-                    minWidth: '240px',
-                  })}
+                  value={comboValue}
+                  onChange={(event) => {
+                    setComboValue(event.currentTarget.value);
+                    combobox.resetSelectedOption();
+                    combobox.openDropdown();
+                  }}
+                  onClick={() => combobox.openDropdown()}
+                  onBlur={() => combobox.closeDropdown()}
+                  miw={240}
                 />
-                <Tooltip label="Registrar nuevo paciente">
-                  <ActionIcon
-                    onClick={() => onCreatePatient()}
-                    size="lg"
-                    color="blue"
-                    variant="transparent"
-                  >
-                    <IconUserPlus />
-                  </ActionIcon>
-                </Tooltip>
-              </Group>
-            </Grid.Col>
-            <Grid.Col sm={12} md={6}>
+              </Combobox.Target>
+
+              <Combobox.Dropdown hidden={!searchResults}>
+                <Combobox.Options>
+                  {options}
+                  {emptyResults && <Combobox.Empty>No se encontraron pacientes</Combobox.Empty>}
+                </Combobox.Options>
+              </Combobox.Dropdown>
+            </Combobox>
+            <Tooltip label="Registrar nuevo paciente">
+              <ActionIcon
+                onClick={() => onCreatePatient()}
+                size="lg"
+                color="blue"
+                variant="transparent"
+              >
+                <IconUserPlus />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Grid.Col>
+        <Grid.Col span={{ sm: 12, md: 6 }}>
+          <Controller
+            name="specialist"
+            control={control}
+            rules={{ required: true }}
+            render={({ field }) => (
               <Select
+                {...field}
                 label="Especialista"
                 placeholder="Especialista"
-                {...form.getInputProps('specialist')}
-                itemComponent={SelectItem}
+                renderOption={renderSelectOption}
                 maxDropdownHeight={400}
-                nothingFound="Sin resultados"
-                onChange={(value: string) => form.setFieldValue('specialist', value)}
-                filter={(value, item) =>
-                  item.label!.toLowerCase().includes(value.toLowerCase().trim()) ||
-                  item.description.toLowerCase().includes(value.toLowerCase().trim())
-                }
-                data={specialistsData.map((item) => ({
+                data={specialistsData.data.map((item) => ({
                   value: `${item.id}`,
                   label: `${item.firstName} ${item.lastName}`,
-                  image: '',
-                  description: item.title,
                 }))}
               />
-            </Grid.Col>
-            <Grid.Col sm={12} md={6}>
-              <Text size="sm" weight={500}>
-                Elija el dia
-              </Text>
-              <Calendar
-                excludeDate={(date) => date.getDay() === 0}
-                // minDate={new Date()}
-                locale="es"
-                value={dayValue}
-                onChange={handleDayChange}
+            )}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ sm: 12, md: 6 }}>
+          <Stack gap="xs">
+            <Text size="sm" fw={500}>
+              Elija el dia
+            </Text>
+            <DatePicker
+              excludeDate={(date) => date.getDay() === 0}
+              // minDate={new Date()}
+              locale="es"
+              value={dayValue}
+              onChange={handleDayChange}
+            />
+            <Group>
+              <Controller
+                name="startDate"
+                control={control}
+                rules={{ required: true }}
+                render={({ field }) => (
+                  <TimeInput
+                    {...field}
+                    label="Hora Inicio"
+                    required
+                    value={dayjs(field.value).format('HH:mm')}
+                    onChange={(e) => {
+                      setValue('startDate', createNewDate(dayValue, e.currentTarget.value), {
+                        shouldDirty: true,
+                      });
+                    }}
+                    leftSection={
+                      <IconClock style={{ width: rem(16), height: rem(16) }} stroke={1.5} />
+                    }
+                  />
+                )}
               />
-            </Grid.Col>
-            <Grid.Col sm={12} md={6}>
-              <Stack>
-                <TimeRangeInput
-                  icon={<IconClock size={16} />}
-                  // error="Debe indicar un rango valido"
-                  required
-                  label="Horario"
-                  value={timeRange}
-                  onChange={handleTimeRangechange}
-                  // format="12"
-                />
+              <Controller
+                name="endDate"
+                control={control}
+                rules={{ required: true }}
+                render={({ field }) => (
+                  <TimeInput
+                    {...field}
+                    label="Hora Fin"
+                    required
+                    value={dayjs(field.value).format('HH:mm')}
+                    onChange={(e) => {
+                      setValue('endDate', createNewDate(dayValue, e.currentTarget.value), {
+                        shouldDirty: true,
+                      });
+                    }}
+                    leftSection={
+                      <IconClock style={{ width: rem(16), height: rem(16) }} stroke={1.5} />
+                    }
+                  />
+                )}
+              />
+            </Group>
+          </Stack>
+        </Grid.Col>
+        <Grid.Col span={{ sm: 12, md: 6 }}>
+          <Stack>
+            <Controller
+              name="treatment"
+              control={control}
+              render={({ field }) => (
                 <Select
+                  {...field}
                   label="Motivo"
                   placeholder="Motivo"
-                  {...form.getInputProps('treatment')}
-                  onChange={(value: string) => form.setFieldValue('treatment', value)}
                   data={treatmentsData.map((item) => ({
                     value: `${item.id}`,
                     label: item.name,
                   }))}
                 />
-                <Textarea label="Notas" minRows={2} maxRows={4} {...form.getInputProps('notes')} />
-                <Radio.Group
-                  value={attendance}
-                  onChange={(value: string) => {
-                    form.setFieldValue('attended', getBooleanFromString(value));
-                    setAttendance(value);
-                  }}
-                  label="Asistio"
-                >
-                  <Radio value="SI" label="Si" />
-                  <Radio value="NO" label="No" />
-                </Radio.Group>
+              )}
+            />
+            <Textarea label="Notas" minRows={2} maxRows={4} {...register('notes')} />
+            <Radio.Group
+              value={attendance}
+              onChange={(value: string) => {
+                setValue('attended', getBooleanFromString(value), { shouldDirty: true });
+                setAttendance(value);
+              }}
+              label="Asistio"
+            >
+              <Group mt="xs">
+                <Radio value="SI" label="Si" />
+                <Radio value="NO" label="No" />
+              </Group>
+            </Radio.Group>
+            <Controller
+              name="state"
+              control={control}
+              render={({ field }) => (
                 <Select
+                  {...field}
                   label="Estado"
-                  {...form.getInputProps('state')}
                   placeholder="Seleccione el estado"
-                  onChange={(value: string) => form.setFieldValue('state', value)}
                   data={appointmentStateData.map((item) => ({
                     value: `${item.id}`,
                     label: item.name,
                   }))}
                 />
-              </Stack>
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <Group position="right">
-                <Button variant="outline" onClick={() => onClose()}>
-                  Cancelar
-                </Button>
-                <Button loading={isMutating} type="submit">
-                  Agendar
-                </Button>
-              </Group>
-            </Grid.Col>
-          </Grid>
-        </form>
-      )}
-    </>
+              )}
+            />
+          </Stack>
+        </Grid.Col>
+        <Grid.Col span={12}>
+          <Group justify="right">
+            <Button variant="outline" onClick={() => onClose()}>
+              Cancelar
+            </Button>
+            <Button loading={createAppointmentMutation.isPending} disabled={!isDirty} type="submit">
+              Agendar
+            </Button>
+          </Group>
+        </Grid.Col>
+      </Grid>
+    </form>
   );
 }

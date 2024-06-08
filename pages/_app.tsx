@@ -1,18 +1,28 @@
-import { ReactElement, ReactNode, useState } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import { NextPage } from 'next';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
-import { ColorScheme, ColorSchemeProvider, MantineProvider } from '@mantine/core';
+import { MantineProvider, createTheme } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
-import { NotificationsProvider } from '@mantine/notifications';
-import { SessionContextProvider, Session } from '@supabase/auth-helpers-react';
-import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { Notifications } from '@mantine/notifications';
 import AppShellLayout from '../components/Layout/AppShell';
-import { RouteTransition } from '../components/RouteTransition';
-import { DehydratedState, Hydrate, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { NavigationProgress } from '@mantine/nprogress';
+import {
+  DehydratedState,
+  HydrationBoundary,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import PatientsCreateModal from '../components/features/PatientsCreateModal/PatientsCreateModal';
-import { Database } from '../types/supabase';
+import '@mantine/core/styles.css';
+import '@mantine/dates/styles.css';
+import '@mantine/nprogress/styles.css';
+import 'mantine-react-table/styles.css';
+import React from 'react';
+import { DatesProvider } from '@mantine/dates';
+import 'dayjs/locale/es';
+import '../styles/globals.css';
 
 export type NextPageWithLayout<P = {}, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: ReactElement) => ReactNode;
@@ -20,21 +30,41 @@ export type NextPageWithLayout<P = {}, IP = P> = NextPage<P, IP> & {
 
 type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
-  initialSession: Session;
   dehydratedState: DehydratedState;
 };
 
-function MyApp({ Component, pageProps, dehydratedState, initialSession }: AppPropsWithLayout) {
-  const [colorScheme, setColorScheme] = useState<ColorScheme>('light');
-  const toggleColorScheme = (value?: ColorScheme) =>
-    setColorScheme(value || (colorScheme === 'dark' ? 'light' : 'dark'));
-  const [queryClient] = useState(() => new QueryClient());
-
-  // Create a new supabase browser client on every first render.
-  const [supabaseClient] = useState(() => createBrowserSupabaseClient<Database>());
+function MyApp({ Component, pageProps, dehydratedState }: AppPropsWithLayout) {
+  const [queryClient] = React.useState(
+    () =>
+      new QueryClient({
+        // defaultOptions: {
+        //   queries: {
+        //     // With SSR, we usually want to set some default staleTime
+        //     // above 0 to avoid refetching immediately on the client
+        //     staleTime: 60 * 1000,
+        //   },
+        // },
+      }),
+  );
 
   // Use the layout defined at the page level, if available
   const getLayout = Component.getLayout ?? ((page) => <AppShellLayout>{page}</AppShellLayout>);
+
+  const theme = createTheme({
+    primaryColor: 'grape',
+    components: {
+      Drawer: {
+        styles: {
+          title: { fontWeight: 600, fontSize: '1.2rem' },
+        },
+      },
+      Modal: {
+        styles: {
+          title: { fontWeight: 600, fontSize: '1.2rem' },
+        },
+      },
+    },
+  });
 
   return (
     <>
@@ -42,23 +72,20 @@ function MyApp({ Component, pageProps, dehydratedState, initialSession }: AppPro
         <title>Dentalamas turnos</title>
         <meta name="viewport" content="minimum-scale=1, initial-scale=1, width=device-width" />
       </Head>
-      <ColorSchemeProvider colorScheme={colorScheme} toggleColorScheme={toggleColorScheme}>
-        <QueryClientProvider client={queryClient}>
-          <Hydrate state={dehydratedState}>
-            <SessionContextProvider supabaseClient={supabaseClient} initialSession={initialSession}>
-              <MantineProvider withGlobalStyles withNormalizeCSS theme={{ colorScheme }}>
-                <ModalsProvider modals={{ patientsCreate: PatientsCreateModal }}>
-                  <RouteTransition />
-                  <NotificationsProvider position="top-center">
-                    {getLayout(<Component {...pageProps} />)}
-                    <ReactQueryDevtools position="bottom-right" />
-                  </NotificationsProvider>
-                </ModalsProvider>
-              </MantineProvider>
-            </SessionContextProvider>
-          </Hydrate>
-        </QueryClientProvider>
-      </ColorSchemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <HydrationBoundary state={dehydratedState}>
+          <MantineProvider theme={theme}>
+            <DatesProvider settings={{ locale: 'ru' }}>
+              <ModalsProvider modals={{ patientsCreate: PatientsCreateModal }}>
+                <NavigationProgress />
+                <Notifications position="top-center" />
+                {getLayout(<Component {...pageProps} />)}
+                <ReactQueryDevtools />
+              </ModalsProvider>
+            </DatesProvider>
+          </MantineProvider>
+        </HydrationBoundary>
+      </QueryClientProvider>
     </>
   );
 }

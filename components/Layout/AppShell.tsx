@@ -1,135 +1,77 @@
-import { MouseEventHandler, ReactNode, useEffect, useState } from 'react';
-import { useAtom } from 'jotai';
-import {
-  AppShell,
-  Navbar,
-  Group,
-  useMantineColorScheme,
-  createStyles,
-  NavLink,
-  Header,
-  MediaQuery,
-  Burger,
-  ActionIcon,
-} from '@mantine/core';
+import { ReactNode } from 'react';
+import { AppShell, Group, useMantineColorScheme, NavLink, Burger, ActionIcon } from '@mantine/core';
 import Logo from './Logo';
-import { IconLogout, IconMoonStars, IconSun } from '@tabler/icons';
+import { IconLogout, IconMoonStars, IconSun } from '@tabler/icons-react';
 import MainNavLinks from './MainNavLinks';
 import Link from 'next/link';
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { User } from './User';
-import { useMediaQuery } from '@mantine/hooks';
-import { menuAtom } from '../../atoms/menu';
-import { Database } from '../../types/supabase';
-import { Profile } from '../../types/profile';
 import { useRouter } from 'next/router';
+import useSupabaseBrowser from '../../utils/supabase/component';
+import classes from './AppShell.module.css';
+import { useProfile } from '../../hooks/useUser/useUser';
+import { LocationButton } from './LocationButton';
+import { useDisclosure } from '@mantine/hooks';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
-const useStyles = createStyles((theme, _params, getRef) => {
-  const icon: any = getRef('icon');
-  return {
-    header: {
-      // paddingBottom: theme.spacing.md,
-      // marginBottom: theme.spacing.md * 1.5,
-      borderBottom: `1px solid ${
-        theme.colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[2]
-      }`,
-    },
-
-    footer: {
-      paddingTop: theme.spacing.md,
-      marginTop: theme.spacing.md,
-      borderTop: `1px solid ${
-        theme.colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[2]
-      }`,
-    },
-  };
-});
-
 export default function AppShellLayout({ children }: AppLayoutProps) {
-  // const theme = useMantineTheme();
-  const [opened, setOpened] = useAtom(menuAtom);
+  const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const { classes, cx } = useStyles();
-  const supabaseClient = useSupabaseClient<Database>();
+  const supabase = useSupabaseBrowser();
   const router = useRouter();
-  // const isMobile = useMediaQuery('(max-width: 600px)', true, { getInitialValueInEffect: false });
 
-  const user = useUser();
-  const [profile, setData] = useState<Profile>();
-
-  useEffect(() => {
-    async function loadData() {
-      const { data: profileData, error } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('id', user!.id)
-        .single();
-      if (error) console.log(error);
-      if (!error) setData(profileData);
-    }
-    // Only run query once user is logged in.
-    if (user) loadData();
-  }, [user]);
+  const { data: user } = useProfile();
 
   return (
     <AppShell
-      navbarOffsetBreakpoint="sm"
-      navbar={
-        <Navbar hiddenBreakpoint="sm" hidden={!opened} width={{ sm: 300 }} py="md">
-          <Navbar.Section grow>
-            <MainNavLinks />
-          </Navbar.Section>
-          <Navbar.Section>{profile && <User profile={profile} />}</Navbar.Section>
-          <Navbar.Section className={classes.footer}>
-            <Link href="#" passHref legacyBehavior>
-              <NavLink
-                icon={<IconLogout />}
-                component="a"
-                label="Cerrar sesion"
-                onClick={async () => {
-                  await supabaseClient.auth.signOut();
-                  router.push('/login');
-                }}
-              />
-            </Link>
-          </Navbar.Section>
-        </Navbar>
-      }
-      header={
-        <Header height={70} p="md">
-          <Group position={'apart'}>
-            <MediaQuery largerThan="sm" styles={{ display: 'none' }}>
-              <Burger opened={opened} onClick={() => setOpened((o) => !o)} />
-            </MediaQuery>
-            <Logo />
-            <ActionIcon
-              onClick={() => toggleColorScheme()}
-              size="sm"
-              variant="transparent"
-              sx={(theme) => ({
-                backgroundColor:
-                  theme.colorScheme === 'dark' ? theme.colors.dark[6] : theme.colors.gray[0],
-                color: theme.colorScheme === 'dark' ? theme.colors.yellow[4] : theme.colors.gray[6],
-                maxWidth: '30px',
-              })}
-            >
-              {colorScheme === 'dark' ? <IconSun size={24} /> : <IconMoonStars size={24} />}
-            </ActionIcon>
-          </Group>
-        </Header>
-      }
-      styles={(theme) => ({
-        main: {
-          backgroundColor:
-            theme.colorScheme === 'dark' ? theme.colors.dark[8] : theme.colors.gray[0],
-        },
-      })}
+      header={{ height: 50 }}
+      navbar={{
+        breakpoint: 'sm',
+        width: { sm: 300 },
+        collapsed: { mobile: !mobileOpened },
+      }}
+      className={classes.main}
+      padding="md"
     >
-      {children}
+      <AppShell.Header p="xs">
+        <Group justify="space-between" align="center">
+          <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
+          <Logo />
+          <ActionIcon
+            onClick={() => toggleColorScheme()}
+            size="sm"
+            variant="transparent"
+            className={classes.actionIcon}
+          >
+            {colorScheme === 'dark' ? <IconSun size="1rem" /> : <IconMoonStars size="1rem" />}
+          </ActionIcon>
+        </Group>
+      </AppShell.Header>
+      <AppShell.Navbar p="md">
+        <AppShell.Section>
+          <LocationButton />
+        </AppShell.Section>
+        <AppShell.Section grow py="sm">
+          <MainNavLinks />
+        </AppShell.Section>
+        <AppShell.Section className={classes.footer}>
+          {user && <User profile={user} />}
+          <Link href="#" passHref legacyBehavior>
+            <NavLink
+              leftSection={<IconLogout size="1rem" />}
+              component="a"
+              label="Cerrar sesion"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.push('/login');
+              }}
+            />
+          </Link>
+        </AppShell.Section>
+      </AppShell.Navbar>
+      <AppShell.Main>{children}</AppShell.Main>
     </AppShell>
   );
 }

@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, useState } from 'react';
 import {
   TextInput,
   Anchor,
@@ -8,87 +8,63 @@ import {
   Container,
   Group,
   Button,
-  createStyles,
   Center,
   Box,
-  Loader,
   PasswordInput,
   Space,
   Divider,
 } from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons';
 import { showNotification } from '@mantine/notifications';
 import { useRouter } from 'next/router';
-import { useForm } from '@mantine/form';
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import Link from 'next/link';
 import Logo from '../components/Layout/Logo';
-import { Database } from '../types/supabase';
+import { SubmitHandler, useForm } from 'react-hook-form';
+import classes from '../styles/pages/login.module.css';
+import useSupabaseBrowser from '../utils/supabase/component';
+import { getURL } from '../utils';
 
-const useStyles = createStyles((theme) => ({
-  title: {
-    fontSize: 26,
-    fontWeight: 900,
-    fontFamily: `Greycliff CF, ${theme.fontFamily}`,
-  },
+type OTPFormValues = {
+  email: string;
+};
 
-  controls: {
-    [theme.fn.smallerThan('xs')]: {
-      flexDirection: 'column-reverse',
-    },
-  },
-
-  control: {
-    [theme.fn.smallerThan('xs')]: {
-      width: '100%',
-      textAlign: 'center',
-    },
-  },
-}));
+type EmailFormvalues = {
+  email: string;
+  password: string;
+};
 
 export default function LoginPage() {
   const router = useRouter();
-  const { classes } = useStyles();
   const [loading, setLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
-  const supabaseClient = useSupabaseClient<Database>();
-  const user = useUser();
+  const supabase = useSupabaseBrowser();
 
-  const form = useForm({
-    initialValues: {
+  // form state
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty, isSubmitting },
+  } = useForm<EmailFormvalues>({
+    values: {
       email: '',
       password: '',
     },
-    validate: {
-      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : 'Email no valido'),
-    },
   });
 
-  const emailForm = useForm({
-    initialValues: {
+  // form state
+  const {
+    register: registerOTP,
+    handleSubmit: handleSubmitOTP,
+    formState: { errors: errorsOTP },
+  } = useForm<OTPFormValues>({
+    defaultValues: {
       email: '',
     },
-    validate: {
-      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : 'Email no valido'),
-    },
   });
 
-  // Get inferred form values type
-  type FormValues = typeof form.values;
-
-  // Get inferred form values type
-  type EmailFormValues = typeof emailForm.values;
-
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
-  const handleLogin = async (values: FormValues) => {
+  const handleLoginWithEmail = async (values: EmailFormvalues) => {
     try {
       setLoading(true);
-      const { error } = await supabaseClient.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
@@ -105,6 +81,7 @@ export default function LoginPage() {
               color: 'red',
             });
       }
+      router.push('/dashboard');
     } catch (error) {
       showNotification({
         title: 'Lo sentimos!',
@@ -116,13 +93,13 @@ export default function LoginPage() {
     }
   };
 
-  const handleEmailLogin = async (values: EmailFormValues) => {
+  const handleEmailLogin = async (values: OTPFormValues) => {
     try {
       setEmailLoading(true);
-      const { error } = await supabaseClient.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithOtp({
         email: values.email,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL,
+          emailRedirectTo: getURL(),
         },
       });
       if (error && error.status === 403) {
@@ -149,45 +126,40 @@ export default function LoginPage() {
     }
   };
 
-  // if (!user)
-  //   return (
-  //     <Container sx={() => ({ height: '100%' })}>
-  //       <Center>
-  //         <Loader size={'xl'} />
-  //       </Center>
-  //     </Container>
-  //   );
+  const onSubmit: SubmitHandler<EmailFormvalues> = (data) => handleLoginWithEmail(data);
+
+  const onOTPSubmit: SubmitHandler<OTPFormValues> = (data) => handleEmailLogin(data);
 
   return (
     <Container size={500} my={30}>
       <Center>
         <Logo />
       </Center>
-      <Title className={classes.title} align="center">
+      <Title className={classes.title} style={{ textAlign: 'center' }}>
         Bienvenido/a!
       </Title>
       <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
-        <Text size="md" align="center">
+        <Text size="md" style={{ textAlign: 'center' }}>
           Ingresa con email y contraseña
         </Text>
         <Space h="md" />
-        <form onSubmit={form.onSubmit(handleLogin)}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <TextInput
             label="Tu email"
             placeholder="email@ejemplo.com"
-            required
-            {...form.getInputProps('email')}
+            error={errors.email && 'Campo requerido'}
+            {...register('email', { required: true })}
           />
           <PasswordInput
             label="Contraseña"
             placeholder="Tu contraseña"
             required
             mt="md"
-            {...form.getInputProps('password')}
+            {...register('password')}
           />
-          <Group position="apart" mt="lg" className={classes.controls}>
+          <Group justify="space-between" mt="lg" className={classes.controls}>
             <Link href="/reset" passHref legacyBehavior>
-              <Anchor component="a" href="#" color="dimmed" size="sm" className={classes.control}>
+              <Anchor component="a" href="#" c="dimmed" size="sm" className={classes.control}>
                 <Center inline>
                   <Box ml={5}>Olvidaste tu contraseña?</Box>
                 </Center>
@@ -200,11 +172,12 @@ export default function LoginPage() {
         </form>
         <Space h="md" />
         <Divider label="O accede con un link en tu correo" labelPosition="center" />
-        <form onSubmit={emailForm.onSubmit(handleEmailLogin)}>
+        <form onSubmit={handleSubmitOTP(onOTPSubmit)}>
           <TextInput
+            {...registerOTP('email', { required: true })}
             label="Tu email"
             placeholder="email@ejemplo.com"
-            {...emailForm.getInputProps('email')}
+            error={errorsOTP.email ? 'Campo requerido' : ''}
           />
           <Button loading={emailLoading} fullWidth mt="xl" type="submit">
             Obtener link
@@ -216,5 +189,5 @@ export default function LoginPage() {
 }
 
 LoginPage.getLayout = function getLayout(page: ReactElement) {
-  return <Box style={{ width: '100vw', height: '100vh' }}>{page}</Box>;
+  return <Box>{page}</Box>;
 };
