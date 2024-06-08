@@ -21,7 +21,7 @@ export function LocationButton() {
             </Text>
 
             <Text c="dimmed" size="xs">
-              Feliz de Azara 1210, 5to Piso
+              Feliz de Azara 1331, 5to Piso
             </Text>
           </div>
 
