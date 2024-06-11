@@ -320,7 +320,7 @@ export default function AppointmentsCreateModal({
                   }}
                   onClick={() => combobox.openDropdown()}
                   onBlur={() => combobox.closeDropdown()}
-                  miw={260}
+                  miw={240}
                 />
               </Combobox.Target>
 

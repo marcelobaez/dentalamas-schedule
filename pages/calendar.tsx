@@ -2,8 +2,6 @@ import { GetServerSidePropsContext } from 'next';
 import useAppointments from '../hooks/useAppointments/useAppointments';
 import Head from 'next/head';
 import {
-  Avatar,
-  Badge,
   Box,
   Button,
   Grid,
@@ -26,7 +24,6 @@ import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import scrollgridPlugin from '@fullcalendar/scrollgrid';
 import esLocale from '@fullcalendar/core/locales/es';
-import { getAvatarFromFullName } from '../utils/getAvatarName';
 import useTreatments from '../hooks/useTreatments/useTreatments';
 import useSpecialists from '../hooks/useSpecialists/useSpecialists';
 import { IconCalendar, IconForbid2, IconPlus } from '@tabler/icons-react';
@@ -36,7 +33,6 @@ import { useState } from 'react';
 import dayjs from 'dayjs';
 import {
   AppointmentState,
-  mantineStateColors,
   stateColors,
 } from '../components/features/AppointmentsTable/AppointmentsTable.utils';
 import 'dayjs/locale/es-mx';
@@ -44,24 +40,12 @@ import { AppointmentsResponse } from '../types/appointment';
 import { createClient } from '../utils/supabase/server-props';
 import { useMantineTheme } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
+import AppointmentsEditModal from '../components/features/AppointmentsEditModal/AppointmentsEditModal';
 
 interface ScheduleModalProps {
   dateRange: [Date, Date];
   onBlock: () => void;
   onSchedule: () => void;
-}
-
-interface EventDetailsProps {
-  eventData: {
-    patient: string;
-    timeText: string;
-    title: string;
-    specialist: string;
-    state: {
-      id: number;
-      name: string;
-    };
-  };
 }
 
 const ScheduleModal = ({ dateRange, onBlock, onSchedule }: ScheduleModalProps) => {
@@ -76,30 +60,6 @@ const ScheduleModal = ({ dateRange, onBlock, onSchedule }: ScheduleModalProps) =
         onClick={() => onSchedule()}
         leftSection={<IconCalendar />}
       >{`Agendar ${from} - ${to}`}</Button>
-    </Stack>
-  );
-};
-
-const EventDetails = ({
-  eventData: { timeText, title, patient, specialist, state },
-}: EventDetailsProps) => {
-  return (
-    <Stack gap={'xs'} p="sm">
-      <Text size={'xs'}>{`${dayjs(timeText).format('DD/MM/YYYY HH:mm')} - ${title}`}</Text>
-      <Group gap={'xs'}>
-        <Text size={'sm'} fw={500}>
-          {patient}
-        </Text>
-      </Group>
-      <Group gap={'xs'}>
-        <Avatar radius={'xl'} size={20}>
-          {getAvatarFromFullName(specialist)}
-        </Avatar>
-        <Text size="sm">{specialist}</Text>
-        <Badge color={state ? mantineStateColors[state.id as AppointmentState] : 'gray'}>
-          {state ? state.name : 'N/D'}
-        </Badge>
-      </Group>
     </Stack>
   );
 };
@@ -164,36 +124,6 @@ export default function Calendar() {
     });
   };
 
-  const openEventModal = (eventArg: EventClickArg) => {
-    const {
-      event: {
-        startStr,
-        endStr,
-        title,
-        _def: {
-          extendedProps: { patient, specialist, state },
-        },
-      },
-    } = eventArg;
-    modals.openModal({
-      modalId: 'eventModal',
-      centered: true,
-      withCloseButton: false,
-      size: 'sm',
-      children: (
-        <EventDetails
-          eventData={{
-            patient: patient,
-            specialist: specialist,
-            state: state,
-            timeText: startStr,
-            title: title,
-          }}
-        />
-      ),
-    });
-  };
-
   return (
     <>
       <Head>
@@ -247,9 +177,14 @@ export default function Calendar() {
           </Group>
         </Grid.Col>
         <Grid.Col span={12}>
-          <Paper shadow="xs" p="md">
+          <Paper
+            shadow="xs"
+            p="md"
+            h={{ base: 'calc(100dvh - 250px)', sm: 'calc(100dvh - 140px)' }}
+          >
             {isLoading && <LoadingOverlay visible />}
             <FullCalendar
+              height="100%"
               schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
               plugins={[
                 dayGridPlugin,
@@ -307,9 +242,10 @@ export default function Calendar() {
                               name: appointment.appointments_states.name,
                             }
                           : null,
-                        specialist: `${appointment.specialists.firstName} ${appointment.specialists.lastName}`,
-                        patient: `${appointment.patients.firstName} ${appointment.patients.lastName}`,
+                        specialistName: `${appointment.specialists.firstName} ${appointment.specialists.lastName}`,
+                        patientName: `${appointment.patients.firstName} ${appointment.patients.lastName}`,
                         resourceId: String(appointment.specialists.id),
+                        appointmentDetails: appointment,
                       };
                     })
                   : []
@@ -322,6 +258,7 @@ export default function Calendar() {
               allDaySlot={false}
               slotLabelInterval="00:30:00"
               eventMinHeight={70}
+              dayMinWidth={160}
               nowIndicator
               expandRows
               slotLabelFormat={{
@@ -331,7 +268,17 @@ export default function Calendar() {
                 meridiem: 'short',
                 hour12: false,
               }}
-              eventClick={(arg: EventClickArg) => openEventModal(arg)}
+              eventClick={(arg: EventClickArg) => {
+                modals.openModal({
+                  modalId: 'appointmentsEditModal',
+                  centered: true,
+                  size: isMobile ? '100%' : '55%',
+                  title: 'Editar turno',
+                  children: (
+                    <AppointmentsEditModal data={arg.event.extendedProps.appointmentDetails} />
+                  ),
+                });
+              }}
               resourceAreaHeaderContent="Profesionales"
               headerToolbar={{
                 left: 'today prev next',
@@ -352,13 +299,13 @@ export default function Calendar() {
                   >
                     <Box w={140}>
                       <Text
-                        title={eventInfo.event.extendedProps.patient}
+                        title={eventInfo.event.extendedProps.patientName}
                         c={theme.colors.dark[7]}
                         fw="bold"
                         fz="0.75rem"
                         truncate="end"
                       >
-                        {eventInfo.event.extendedProps.patient}
+                        {eventInfo.event.extendedProps.patientName}
                       </Text>
                     </Box>
                     <span

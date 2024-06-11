@@ -30,6 +30,10 @@ a {
   --fc-button-active-border-color: var(--mantine-primary-color-filled);
 }
 
+.fc-toolbar-chunk {
+  padding-bottom: 0.5rem;
+}
+
 .fc .fc-timegrid-slot {
   height: 4.375rem;
 }

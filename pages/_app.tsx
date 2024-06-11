@@ -84,7 +84,10 @@ function MyApp({ Component, pageProps, dehydratedState }: AppPropsWithLayout) {
     <>
       <Head>
         <title>Dentalamas turnos</title>
-        <meta name="viewport" content="minimum-scale=1, initial-scale=1, width=device-width" />
+        <meta
+          name="viewport"
+          content="minimum-scale=1, initial-scale=1, width=device-width, maximum-scale=1"
+        />
       </Head>
       <QueryClientProvider client={queryClient}>
         <HydrationBoundary state={dehydratedState}>

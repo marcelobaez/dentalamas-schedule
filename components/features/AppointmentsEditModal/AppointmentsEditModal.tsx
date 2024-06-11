@@ -30,21 +30,13 @@ import { getBooleanFromString, getStringValueFromBoolean } from '../../../utils/
 import { SubmitHandler, useForm, Controller } from 'react-hook-form';
 import { createNewDate } from '../AppointmentsCreateModal/AppointmentsCreateModal';
 
-interface ItemProps extends React.ComponentPropsWithoutRef<'div'> {
-  image: string;
-  label: string;
-  description: string;
-  group?: string;
-}
-
 interface ModalProps {
   data: AppointmentsResponse;
 }
 
-const EXISTING_USERS = 'Pacientes encontrados';
-
 interface FormValues {
   patient: string;
+  patientName: string;
   specialist: string;
   treatment: string;
   notes: string;
@@ -107,6 +99,7 @@ export default function AppointmentsEditModal({ data }: ModalProps) {
   } = useForm<FormValues>({
     values: {
       patient: String(data.patients.id),
+      patientName: `${data.patients.firstName} ${data.patients.lastName}`,
       specialist: String(data.specialists.id),
       treatment: String(data.treatments.id),
       notes: data.notes ?? '',
@@ -185,8 +178,7 @@ export default function AppointmentsEditModal({ data }: ModalProps) {
             <Grid.Col span={{ sm: 12, md: 6 }}>
               <Group align={'end'}>
                 <TextInput
-                  {...register('patient', { required: true })}
-                  value={`${data.patients.firstName} ${data.patients.lastName}`}
+                  {...register('patientName', { required: true })}
                   label="Paciente"
                   disabled
                   miw={240}
