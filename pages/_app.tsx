@@ -2,7 +2,7 @@ import { ReactElement, ReactNode } from 'react';
 import { NextPage } from 'next';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
-import { MantineProvider, createTheme } from '@mantine/core';
+import { MantineColorsTuple, MantineProvider, createTheme } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import AppShellLayout from '../components/Layout/AppShell';
@@ -33,17 +33,30 @@ type AppPropsWithLayout = AppProps & {
   dehydratedState: DehydratedState;
 };
 
+const darkPurple: MantineColorsTuple = [
+  '#f2f0ff',
+  '#e0dff2',
+  '#bfbdde',
+  '#9b98ca',
+  '#7d79ba',
+  '#6a65b0',
+  '#605bac',
+  '#504c97',
+  '#464388',
+  '#3b3979',
+];
+
 function MyApp({ Component, pageProps, dehydratedState }: AppPropsWithLayout) {
   const [queryClient] = React.useState(
     () =>
       new QueryClient({
-        // defaultOptions: {
-        //   queries: {
-        //     // With SSR, we usually want to set some default staleTime
-        //     // above 0 to avoid refetching immediately on the client
-        //     staleTime: 60 * 1000,
-        //   },
-        // },
+        defaultOptions: {
+          queries: {
+            // With SSR, we usually want to set some default staleTime
+            // above 0 to avoid refetching immediately on the client
+            staleTime: 60 * 1000,
+          },
+        },
       }),
   );
 
@@ -51,7 +64,8 @@ function MyApp({ Component, pageProps, dehydratedState }: AppPropsWithLayout) {
   const getLayout = Component.getLayout ?? ((page) => <AppShellLayout>{page}</AppShellLayout>);
 
   const theme = createTheme({
-    primaryColor: 'grape',
+    primaryColor: 'darkPurple',
+    colors: { darkPurple },
     components: {
       Drawer: {
         styles: {
@@ -75,7 +89,11 @@ function MyApp({ Component, pageProps, dehydratedState }: AppPropsWithLayout) {
       <QueryClientProvider client={queryClient}>
         <HydrationBoundary state={dehydratedState}>
           <MantineProvider theme={theme}>
-            <DatesProvider settings={{ locale: 'ru' }}>
+            <DatesProvider
+              settings={{
+                locale: 'es',
+              }}
+            >
               <ModalsProvider modals={{ patientsCreate: PatientsCreateModal }}>
                 <NavigationProgress />
                 <Notifications position="top-center" />

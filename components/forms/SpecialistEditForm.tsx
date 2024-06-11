@@ -15,7 +15,7 @@ import {
   Badge,
 } from '@mantine/core';
 import { IconBuilding, IconCheck, IconMail, IconPhone } from '@tabler/icons-react';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { SubmitHandler, useFieldArray, useForm } from 'react-hook-form';
 import { TimeInput } from '@mantine/dates';
 import useTreatments from '../../hooks/useTreatments/useTreatments';
@@ -24,6 +24,8 @@ import useSupabaseBrowser from '../../utils/supabase/component';
 import React from 'react';
 import { Tables } from '../../types/supabase';
 import { useToggleByTime } from '../../hooks/useToggleByTime/useToggleByTime';
+import { AutoHideSuccess } from './common/AutoHideSuccess';
+import { AutoHideError } from './common/AutoHideError';
 
 type FormValues = {
   specialist: {
@@ -117,9 +119,14 @@ export function SpecialistEditForm({
   const {
     register: registerStaff,
     handleSubmit: handleSubmitStaff,
-    formState: { errors: staffErrors, isDirty: isStaffDirty },
+    reset: resetStaff,
+    formState: {
+      errors: staffErrors,
+      isDirty: isStaffDirty,
+      isSubmitSuccessful: isStaffSubmitSuccess,
+    },
   } = useForm<FormValues['specialist']>({
-    defaultValues: {
+    values: {
       firstName: data.firstName,
       lastName: data.lastName,
       phone: data.phone,
@@ -133,13 +140,13 @@ export function SpecialistEditForm({
   const {
     register: registerWD,
     handleSubmit: handleSubmitWD,
-    trigger: triggerWD,
     control: controlWD,
     getValues: getWDValues,
     watch: watchWD,
-    formState: { errors: wdErrors, isDirty: isWDDirty },
+    reset: resetWD,
+    formState: { errors: wdErrors, isDirty: isWDDirty, isSubmitSuccessful: isWDSubmitSuccess },
   } = useForm<{ workingDays: FormValues['workingDays'] }>({
-    defaultValues: {
+    values: {
       workingDays: DEFAULT_WORKING_DAYS.map((item1) => {
         const checked = data.specialist_working_days.some(
           (item2) => item1.day_of_week === item2.day_of_week,
@@ -161,13 +168,12 @@ export function SpecialistEditForm({
   const {
     register: registerTr,
     handleSubmit: handleSubmitTr,
-    trigger: triggerTr,
     control: controlTr,
-    getValues: getTrValues,
     watch: watchTr,
-    formState: { errors: trErrors, isDirty: isTrDirty, dirtyFields },
+    reset: resetTr,
+    formState: { errors: trErrors, isDirty: isTrDirty, isSubmitSuccessful: isTrSubmitSuccess },
   } = useForm<{ treatments: FormValues['treatments'] }>({
-    defaultValues: {
+    values: {
       treatments: treatmentsData
         ? treatmentsData.map((item1) => {
             const checked = data.treatments.some((item2) => item1.id === item2.id);
@@ -176,6 +182,21 @@ export function SpecialistEditForm({
         : [],
     },
   });
+
+  // Reset fields after a successful response
+  useEffect(() => {
+    resetStaff();
+  }, [isStaffSubmitSuccess]);
+
+  // Reset fields after a successful response
+  useEffect(() => {
+    resetTr();
+  }, [isTrSubmitSuccess]);
+
+  // Reset fields after a successful response
+  useEffect(() => {
+    resetWD();
+  }, [isWDSubmitSuccess]);
 
   const { fields: workDaysFields } = useFieldArray({
     control: controlWD,
@@ -467,24 +488,7 @@ export function SpecialistEditForm({
               />
             </Group>
             <Group justify="end">
-              <Transition
-                mounted={isSuccessStaffVisible}
-                transition="slide-right"
-                duration={400}
-                timingFunction="ease"
-              >
-                {(styles) => (
-                  <Badge
-                    style={styles}
-                    color="green"
-                    variant="light"
-                    size="lg"
-                    rightSection={<IconCheck size="0.875rem" />}
-                  >
-                    Guardado
-                  </Badge>
-                )}
-              </Transition>
+              <AutoHideSuccess visible={isSuccessStaffVisible} />
               <Button
                 onClick={handleSubmitStaff(onSubmitStaff)}
                 loading={updateStaffMutation.isPending}
@@ -519,24 +523,7 @@ export function SpecialistEditForm({
               />
             ))}
             <Group justify="end">
-              <Transition
-                mounted={isSuccessTrVisible}
-                transition="slide-right"
-                duration={400}
-                timingFunction="ease"
-              >
-                {(styles) => (
-                  <Badge
-                    style={styles}
-                    color="green"
-                    variant="light"
-                    size="lg"
-                    rightSection={<IconCheck size="0.875rem" />}
-                  >
-                    Guardado
-                  </Badge>
-                )}
-              </Transition>
+              <AutoHideSuccess visible={isSuccessTrVisible} />
               <Button
                 onClick={handleSubmitTr(onSubmitTr)}
                 loading={updateTrMutation.isPending}
@@ -612,24 +599,7 @@ export function SpecialistEditForm({
               );
             })}
             <Group justify="end" pt="sm">
-              <Transition
-                mounted={isSuccessWDVisible}
-                transition="slide-right"
-                duration={400}
-                timingFunction="ease"
-              >
-                {(styles) => (
-                  <Badge
-                    style={styles}
-                    color="green"
-                    variant="light"
-                    size="lg"
-                    rightSection={<IconCheck size="0.875rem" />}
-                  >
-                    Guardado
-                  </Badge>
-                )}
-              </Transition>
+              <AutoHideSuccess visible={isSuccessWDVisible} />
               <Button
                 onClick={handleSubmitWD(onSubmitWD)}
                 loading={updateWDMutation.isPending}

@@ -51,7 +51,7 @@ export default function AppointmentsTable() {
   const [seletedSp, setSelectedSp] = useState<string | null>('');
   const [seletedTr, setSelectedTr] = useState<string | null>('');
 
-  const [dateRangeValue, setRangeValue] = useState<DatesRangeValue>([
+  const [dateRangeValue, setRangeValue] = useState<[Date | null, Date | null]>([
     dayjs().startOf('week').add(1, 'day').toDate(),
     dayjs().endOf('week').toDate(),
   ]);
@@ -197,9 +197,9 @@ export default function AppointmentsTable() {
       density: 'xs',
       isLoading,
       pagination,
+      sorting,
       showAlertBanner: isError,
       showProgressBars: isFetching,
-      sorting,
     },
   });
 
@@ -220,13 +220,13 @@ export default function AppointmentsTable() {
           </Text>
           <Group justify="end">
             <DatePickerInput
-              // style={{ minWidth: '350px' }}
               leftSection={<IconCalendar size={16} />}
               placeholder="Elija el rango de fechas"
               type="range"
               value={dateRangeValue}
               onChange={setRangeValue}
-              locale="es-mx"
+              locale="es"
+              allowSingleDateInRange={true}
             />
             <Select
               value={seletedSp}

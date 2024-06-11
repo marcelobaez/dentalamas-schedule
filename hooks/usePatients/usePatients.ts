@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { RequestParams } from '../../types/api';
-import { createClient } from '../../utils/supabase/client';
+import useSupabaseBrowser from '../../utils/supabase/component';
 import { Patient } from '../../types/patient';
 
 export default function usePatients({
@@ -10,7 +10,7 @@ export default function usePatients({
   ascending = false,
   searchTerm,
 }: RequestParams = {}) {
-  const supabase = createClient();
+  const supabase = useSupabaseBrowser();
   return useQuery({
     queryKey: ['patients', from, to, sortBy, ascending, searchTerm],
     queryFn: async () => {

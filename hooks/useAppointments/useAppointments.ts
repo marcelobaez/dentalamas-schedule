@@ -1,4 +1,4 @@
-import { UseQueryOptions, useQuery } from '@tanstack/react-query';
+import { UseQueryOptions, keepPreviousData, useQuery } from '@tanstack/react-query';
 import { AppointmentsResponse } from '../../types/appointment';
 import { appointmentsQuerySelect } from '../../utils/constants';
 import useSupabaseBrowser from '../../utils/supabase/component';
@@ -44,6 +44,7 @@ export default function useAppointments({
 
       return { data, count };
     },
+    placeholderData: keepPreviousData,
     enabled: !options ? true : Boolean(options.enabled),
   });
 }

@@ -11,12 +11,15 @@ import classes from './AppShell.module.css';
 import { useProfile } from '../../hooks/useUser/useUser';
 import { LocationButton } from './LocationButton';
 import { useDisclosure } from '@mantine/hooks';
+import { useAtom } from 'jotai';
+import { menuAtom } from '../../atoms/menu';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export default function AppShellLayout({ children }: AppLayoutProps) {
+  const [opened, setOpened] = useAtom(menuAtom);
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const supabase = useSupabaseBrowser();
@@ -30,14 +33,14 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
       navbar={{
         breakpoint: 'sm',
         width: { sm: 300 },
-        collapsed: { mobile: !mobileOpened },
+        collapsed: { mobile: !opened },
       }}
       className={classes.main}
       padding="md"
     >
       <AppShell.Header p="xs">
         <Group justify="space-between" align="center">
-          <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
+          <Burger opened={opened} onClick={() => setOpened((o) => !o)} hiddenFrom="sm" size="sm" />
           <Logo />
           <ActionIcon
             onClick={() => toggleColorScheme()}

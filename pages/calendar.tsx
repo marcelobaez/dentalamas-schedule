@@ -4,11 +4,13 @@ import Head from 'next/head';
 import {
   Avatar,
   Badge,
+  Box,
   Button,
   Grid,
   Group,
   LoadingOverlay,
   Paper,
+  Pill,
   Select,
   Stack,
   Text,
@@ -20,6 +22,9 @@ import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
+import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
+import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
+import scrollgridPlugin from '@fullcalendar/scrollgrid';
 import esLocale from '@fullcalendar/core/locales/es';
 import { getAvatarFromFullName } from '../utils/getAvatarName';
 import useTreatments from '../hooks/useTreatments/useTreatments';
@@ -34,15 +39,11 @@ import {
   mantineStateColors,
   stateColors,
 } from '../components/features/AppointmentsTable/AppointmentsTable.utils';
-import { useIsMobile } from '../hooks/useIsMobile/useIsMobile';
 import 'dayjs/locale/es-mx';
 import { AppointmentsResponse } from '../types/appointment';
 import { createClient } from '../utils/supabase/server-props';
-
-enum Specialist {
-  Talamas = 1,
-  Valiente,
-}
+import { useMantineTheme } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 
 interface ScheduleModalProps {
   dateRange: [Date, Date];
@@ -104,6 +105,7 @@ const EventDetails = ({
 };
 
 export default function Calendar() {
+  const theme = useMantineTheme();
   const [selectedSp, setSelectedSp] = useState<string | null>('');
   const [selectedTr, setSelectedTr] = useState<string | null>('');
 
@@ -117,7 +119,7 @@ export default function Calendar() {
   const { data: treatmentsData } = useTreatments();
   const { data: specialistsData } = useSpecialists();
   const modals = useModals();
-  const isMobile = useIsMobile();
+  const isMobile = useMediaQuery('(max-width: 50em)');
 
   const openCreatePatientModal = () => {
     openContextModal({
@@ -248,7 +250,31 @@ export default function Calendar() {
           <Paper shadow="xs" p="md">
             {isLoading && <LoadingOverlay visible />}
             <FullCalendar
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+              schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
+              plugins={[
+                dayGridPlugin,
+                timeGridPlugin,
+                interactionPlugin,
+                listPlugin,
+                resourceTimeGridPlugin,
+                resourceTimelinePlugin,
+                scrollgridPlugin,
+              ]}
+              views={{
+                resourceTimeLineStaff: {
+                  type: 'resourceTimeline',
+                  duration: { days: 1 },
+                  buttonText: 'Por profesional',
+                },
+              }}
+              resources={
+                specialistsData
+                  ? specialistsData.data.map((sp) => ({
+                      id: String(sp.id),
+                      title: `${sp.firstName} ${sp.lastName}`,
+                    }))
+                  : []
+              }
               editable
               selectable
               events={
@@ -261,7 +287,19 @@ export default function Calendar() {
                         start: new Date(appointment.startDate),
                         end: new Date(appointment.endDate),
                         color: appointment.appointments_states
-                          ? stateColors[appointment.appointments_states.id as AppointmentState]
+                          ? theme.colors[
+                              stateColors[appointment.appointments_states.id as AppointmentState]
+                            ][2]
+                          : 'blue',
+                        boldColor: appointment.appointments_states
+                          ? theme.colors[
+                              stateColors[appointment.appointments_states.id as AppointmentState]
+                            ][8]
+                          : 'blue',
+                        midColor: appointment.appointments_states
+                          ? theme.colors[
+                              stateColors[appointment.appointments_states.id as AppointmentState]
+                            ][4]
                           : 'blue',
                         state: appointment.appointments_states
                           ? {
@@ -271,6 +309,7 @@ export default function Calendar() {
                           : null,
                         specialist: `${appointment.specialists.firstName} ${appointment.specialists.lastName}`,
                         patient: `${appointment.patients.firstName} ${appointment.patients.lastName}`,
+                        resourceId: String(appointment.specialists.id),
                       };
                     })
                   : []
@@ -280,11 +319,64 @@ export default function Calendar() {
               initialView={'timeGridWeek'}
               slotMinTime="07:00:00"
               slotMaxTime="23:00:00"
+              allDaySlot={false}
+              slotLabelInterval="00:30:00"
+              eventMinHeight={70}
+              nowIndicator
+              expandRows
+              slotLabelFormat={{
+                hour: 'numeric',
+                minute: '2-digit',
+                omitZeroMinute: false,
+                meridiem: 'short',
+                hour12: false,
+              }}
               eventClick={(arg: EventClickArg) => openEventModal(arg)}
+              resourceAreaHeaderContent="Profesionales"
               headerToolbar={{
-                left: 'prev today next',
+                left: 'today prev next',
                 center: 'title',
-                right: 'dayGridMonth timeGridWeek timeGridDay',
+                right: 'timeGridDay timeGridWeek dayGridMonth resourceTimeLineStaff',
+              }}
+              eventContent={(eventInfo) => {
+                return (
+                  <div
+                    style={{
+                      whiteSpace: 'nowrap',
+                      borderInlineStart: `3px solid ${eventInfo.event.extendedProps.boldColor}`,
+                      borderStartEndRadius: '0.25rem',
+                      borderEndEndRadius: '0.25rem',
+                      height: '100%',
+                      paddingLeft: '3px',
+                    }}
+                  >
+                    <Box w={140}>
+                      <Text
+                        title={eventInfo.event.extendedProps.patient}
+                        c={theme.colors.dark[7]}
+                        fw="bold"
+                        fz="0.75rem"
+                        truncate="end"
+                      >
+                        {eventInfo.event.extendedProps.patient}
+                      </Text>
+                    </Box>
+                    <span
+                      style={{
+                        color: theme.colors.dark[7],
+                        fontSize: '0.75rem',
+                      }}
+                    >
+                      {`${dayjs(eventInfo.event.startStr).format('HH:mm')} > ${dayjs(
+                        eventInfo.event.endStr,
+                      ).format('HH:mm')}`}
+                    </span>
+                    <br></br>
+                    <Pill size="sm" bg={eventInfo.event.extendedProps.midColor}>
+                      {eventInfo.event.title}
+                    </Pill>
+                  </div>
+                );
               }}
             />
           </Paper>

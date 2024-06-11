@@ -25,9 +25,14 @@ a {
   }
 } */
 
-/* :root {
-  --fc-button-bg-color: red;
-} */
+:root {
+  --fc-button-active-bg-color: var(--mantine-primary-color-filled);
+  --fc-button-active-border-color: var(--mantine-primary-color-filled);
+}
+
+.fc .fc-timegrid-slot {
+  height: 4.375rem;
+}
 
 .fc .fc-toolbar-title {
   font-size: 1.35em;
@@ -41,9 +46,19 @@ a {
   font-size: 0.9rem;
 }
 
-/* .fc .fc-toolbar {
-  flex-wrap: wrap;
+/* .fc .fc-timegrid-slot {
+  height: 3.5em;
 } */
+
+/* .fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: var(--mantine-primary-color-filled);
+  border-color: var(--mantine-primary-color-filled);
+} */
+
+.fc-toolbar,
+.fc-col-header-cell-cushion {
+  text-transform: capitalize;
+}
 
 @media (max-width: 767px) {
   .fc-toolbar.fc-header-toolbar {

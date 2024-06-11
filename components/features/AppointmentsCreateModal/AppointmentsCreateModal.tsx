@@ -284,7 +284,7 @@ export default function AppointmentsCreateModal({
     <form onSubmit={handleSubmit(onSubmit)}>
       <Grid>
         <Grid.Col span={{ sm: 12, md: 6 }}>
-          <Group align={'end'}>
+          <Group align={'end'} justify="space-between" grow>
             <Combobox
               onOptionSubmit={(optionValue) => {
                 setValue('patient', optionValue, { shouldDirty: true });
@@ -320,7 +320,7 @@ export default function AppointmentsCreateModal({
                   }}
                   onClick={() => combobox.openDropdown()}
                   onBlur={() => combobox.closeDropdown()}
-                  miw={240}
+                  miw={260}
                 />
               </Combobox.Target>
 
@@ -332,12 +332,7 @@ export default function AppointmentsCreateModal({
               </Combobox.Dropdown>
             </Combobox>
             <Tooltip label="Registrar nuevo paciente">
-              <ActionIcon
-                onClick={() => onCreatePatient()}
-                size="lg"
-                color="blue"
-                variant="transparent"
-              >
+              <ActionIcon onClick={() => onCreatePatient()} size="lg" variant="transparent">
                 <IconUserPlus />
               </ActionIcon>
             </Tooltip>
@@ -374,6 +369,7 @@ export default function AppointmentsCreateModal({
               locale="es"
               value={dayValue}
               onChange={handleDayChange}
+              size="md"
             />
             <Group>
               <Controller

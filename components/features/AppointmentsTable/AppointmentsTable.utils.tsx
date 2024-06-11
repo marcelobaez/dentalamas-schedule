@@ -9,11 +9,11 @@ export enum AppointmentState {
 }
 
 export const stateColors = {
-  [AppointmentState.Approved]: '#69DB7C',
-  [AppointmentState.Pending]: '#FFA94D',
-  [AppointmentState.Cancelled]: '#FF8787',
-  [AppointmentState.Rejected]: '#5C5F66',
-  [AppointmentState.Rescheduled]: '#CED4DA',
+  [AppointmentState.Approved]: 'green',
+  [AppointmentState.Pending]: 'darkPurple', //'#6a65b0'
+  [AppointmentState.Cancelled]: 'red',
+  [AppointmentState.Rejected]: 'dark',
+  [AppointmentState.Rescheduled]: 'gray',
 };
 
 export const mantineStateColors = {
