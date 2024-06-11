@@ -227,6 +227,7 @@ export default function AppointmentsTable() {
               onChange={setRangeValue}
               locale="es"
               allowSingleDateInRange={true}
+              w={{ base: '100%', sm: 'auto' }}
             />
             <Select
               value={seletedSp}
@@ -243,6 +244,7 @@ export default function AppointmentsTable() {
                     }))
                   : []),
               ]}
+              w={{ base: '100%', sm: 'auto' }}
             />
             <Select
               value={seletedTr}
@@ -257,8 +259,13 @@ export default function AppointmentsTable() {
                   value: String(item.id),
                 })),
               ]}
+              w={{ base: '100%', sm: 'auto' }}
             />
-            <Button leftSection={<IconPlus />} onClick={() => openCreateAppointmentModal()}>
+            <Button
+              leftSection={<IconPlus />}
+              onClick={() => openCreateAppointmentModal()}
+              w={{ base: '100%', sm: 'auto' }}
+            >
               Nuevo turno
             </Button>
           </Group>

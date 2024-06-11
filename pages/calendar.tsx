@@ -150,6 +150,7 @@ export default function Calendar() {
                         value: String(item.id),
                       })),
                     ]}
+                    w={{ base: '100%', sm: 'auto' }}
                   />
                   <Select
                     value={selectedTr}
@@ -164,12 +165,14 @@ export default function Calendar() {
                         value: String(item.id),
                       })),
                     ]}
+                    w={{ base: '100%', sm: 'auto' }}
                   />
                 </>
               )}
               <Button
                 leftSection={<IconPlus size={16} />}
                 onClick={() => openCreateAppointmentModal()}
+                w={{ base: '100%', sm: 'auto' }}
               >
                 Nuevo turno
               </Button>
