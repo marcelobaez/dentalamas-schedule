@@ -23,7 +23,6 @@ import React from 'react';
 import { DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/es';
 import '../styles/globals.css';
-import { AnimatePresence } from 'framer-motion';
 
 export type NextPageWithLayout<P = {}, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: ReactElement) => ReactNode;
