@@ -1,7 +1,7 @@
 import { Paper, Title, Text, TextInput, Button, Container, Center, Box } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { ReactElement, useState } from 'react';
-import Logo from '../components/Layout/Logo';
+import Logo from '../components/layout/Logo';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import classes from '../styles/pages/reset.module.css';
 import useSupabaseBrowser from '../utils/supabase/component';

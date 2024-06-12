@@ -17,7 +17,7 @@ import {
 import { showNotification } from '@mantine/notifications';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import Logo from '../components/Layout/Logo';
+import Logo from '../components/layout/Logo';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import classes from '../styles/pages/login.module.css';
 import useSupabaseBrowser from '../utils/supabase/component';

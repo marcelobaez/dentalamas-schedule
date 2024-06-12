@@ -183,6 +183,7 @@ export default function Calendar() {
           <Paper
             shadow="xs"
             p="md"
+            mih={400}
             h={{ base: 'calc(100dvh - 250px)', sm: 'calc(100dvh - 140px)' }}
           >
             {isLoading && <LoadingOverlay visible />}

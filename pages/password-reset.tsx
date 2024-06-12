@@ -14,7 +14,7 @@ import {
 import { useInputState } from '@mantine/hooks';
 import { showNotification } from '@mantine/notifications';
 import { IconCheck, IconX } from '@tabler/icons-react';
-import Logo from '../components/Layout/Logo';
+import Logo from '../components/layout/Logo';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import classes from '../styles/pages/password-reset.module.css';
 import useSupabaseBrowser from '../utils/supabase/component';

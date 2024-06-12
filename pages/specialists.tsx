@@ -37,6 +37,13 @@ type WorkDay = {
   end_time: string;
 };
 
+type ExtendedSpecialist = Tables<'specialists'> & {
+  specialist_working_days: Tables<'specialist_working_days'>[];
+  treatments: Tables<'treatments'>[];
+  specialist_treatments: Tables<'specialist_treatments'>[];
+  locations: Tables<'locations'>[];
+};
+
 const getColorByDay = (day: StringDays, workDays: WorkDay[]) => {
   const numberDay = laborDays[day];
   const workDay = workDays.find((item) => item.day_of_week === numberDay);
@@ -62,16 +69,7 @@ export default function Specialists() {
       specialist_treatments: Tables<'specialist_treatments'>[];
     }
   >();
-  const columns = useMemo<
-    MRT_ColumnDef<
-      Tables<'specialists'> & {
-        specialist_working_days: Tables<'specialist_working_days'>[];
-        treatments: Tables<'treatments'>[];
-        specialist_treatments: Tables<'specialist_treatments'>[];
-        locations: Tables<'locations'>[];
-      }
-    >[]
-  >(
+  const columns = useMemo<MRT_ColumnDef<ExtendedSpecialist>[]>(
     () => [
       {
         accessorKey: 'lastName',
@@ -179,7 +177,7 @@ export default function Specialists() {
     columns,
     data: fetchedUsers,
     rowCount: totalRowCount,
-    ...getMantineStyleAndOpts(isError),
+    ...getMantineStyleAndOpts<ExtendedSpecialist>(isError),
     manualPagination: false,
     manualFiltering: false,
     manualSorting: false,

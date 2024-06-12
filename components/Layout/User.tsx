@@ -13,12 +13,14 @@ export function User(props: UserProps) {
       style={{
         padding: 'calc(0.5rem* var(--mantine-scale)) var(--mantine-spacing-sm)',
       }}
+      hiddenFrom="sm"
     >
       <UnstyledButton className={classes.user}>
         <Group>
           <Avatar
             {...(props.profile.avatar_url ? { src: props.profile.avatar_url } : null)}
             radius="xl"
+            color="darkPurple"
           />
           <Box style={{ flex: 1 }}>
             <Text size="sm" fw={500}>

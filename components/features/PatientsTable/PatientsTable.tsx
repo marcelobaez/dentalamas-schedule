@@ -117,7 +117,7 @@ export function PatientsTable() {
     columns,
     data: fetchedUsers,
     rowCount: totalRowCount,
-    ...getMantineStyleAndOpts(isError),
+    ...getMantineStyleAndOpts<Patient>(isError),
     enableRowActions: false,
     onColumnFilterFnsChange: setColumnFilterFns,
     onColumnFiltersChange: setColumnFilters,

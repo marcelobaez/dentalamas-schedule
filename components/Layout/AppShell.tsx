@@ -3,16 +3,17 @@ import { AppShell, Group, useMantineColorScheme, NavLink, Burger, ActionIcon } f
 import Logo from './Logo';
 import { IconLogout, IconMoonStars, IconSun } from '@tabler/icons-react';
 import MainNavLinks from './MainNavLinks';
-import Link from 'next/link';
 import { User } from './User';
 import { useRouter } from 'next/router';
 import useSupabaseBrowser from '../../utils/supabase/component';
 import classes from './AppShell.module.css';
 import { useProfile } from '../../hooks/useUser/useUser';
 import { LocationButton } from './LocationButton';
-import { useDisclosure } from '@mantine/hooks';
 import { useAtom } from 'jotai';
 import { menuAtom } from '../../atoms/menu';
+import { AnimatePresence, motion } from 'framer-motion';
+import { UserMenu } from './UserMenu';
+import PageTransition from './PageTransition';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -20,7 +21,6 @@ interface AppLayoutProps {
 
 export default function AppShellLayout({ children }: AppLayoutProps) {
   const [opened, setOpened] = useAtom(menuAtom);
-  const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const supabase = useSupabaseBrowser();
   const router = useRouter();
@@ -42,14 +42,17 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
         <Group justify="space-between" align="center">
           <Burger opened={opened} onClick={() => setOpened((o) => !o)} hiddenFrom="sm" size="sm" />
           <Logo />
-          <ActionIcon
-            onClick={() => toggleColorScheme()}
-            size="sm"
-            variant="transparent"
-            className={classes.actionIcon}
-          >
-            {colorScheme === 'dark' ? <IconSun size="1rem" /> : <IconMoonStars size="1rem" />}
-          </ActionIcon>
+          <Group gap="xs">
+            <ActionIcon
+              onClick={() => toggleColorScheme()}
+              size="sm"
+              variant="transparent"
+              className={classes.actionIcon}
+            >
+              {colorScheme === 'dark' ? <IconSun size="1rem" /> : <IconMoonStars size="1rem" />}
+            </ActionIcon>
+            {user && <UserMenu profile={user} />}
+          </Group>
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="md">
@@ -61,20 +64,22 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
         </AppShell.Section>
         <AppShell.Section className={classes.footer}>
           {user && <User profile={user} />}
-          <Link href="#" passHref legacyBehavior>
-            <NavLink
-              leftSection={<IconLogout size="1rem" />}
-              component="a"
-              label="Cerrar sesion"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.push('/login');
-              }}
-            />
-          </Link>
+          <NavLink
+            leftSection={<IconLogout size="1rem" />}
+            component="a"
+            label="Cerrar sesion"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push('/login');
+            }}
+          />
         </AppShell.Section>
       </AppShell.Navbar>
-      <AppShell.Main>{children}</AppShell.Main>
+      <AppShell.Main>
+        <AnimatePresence mode="wait" initial={false} onExitComplete={() => window.scrollTo(0, 0)}>
+          <PageTransition key={router.asPath}>{children}</PageTransition>
+        </AnimatePresence>
+      </AppShell.Main>
     </AppShell>
   );
 }

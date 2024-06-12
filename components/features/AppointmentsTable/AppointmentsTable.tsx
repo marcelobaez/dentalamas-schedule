@@ -157,7 +157,7 @@ export default function AppointmentsTable() {
     columns,
     data: memoData.fetchedAppointments,
     rowCount: memoData.totalRowCount,
-    ...getMantineStyleAndOpts(isError),
+    ...getMantineStyleAndOpts<AppointmentsResponse>(isError),
     initialState: { showColumnFilters: false },
     onPaginationChange: setPagination,
     onSortingChange: setSorting,

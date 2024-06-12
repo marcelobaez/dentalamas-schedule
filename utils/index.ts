@@ -1,3 +1,4 @@
+import { MRT_RowData, MRT_TableOptions } from 'mantine-react-table';
 import { MRT_Localization_ES } from 'mantine-react-table/locales/es/index.esm.mjs';
 
 export const getURL = () => {
@@ -12,7 +13,9 @@ export const getURL = () => {
   return url;
 };
 
-export const getMantineStyleAndOpts = (isError: boolean) => ({
+export const getMantineStyleAndOpts = <TData extends MRT_RowData>(
+  isError: boolean,
+): Omit<MRT_TableOptions<TData>, 'data' | 'rowCount' | 'columns'> => ({
   // style props
   mantineToolbarAlertBannerProps: isError
     ? {
@@ -44,6 +47,13 @@ export const getMantineStyleAndOpts = (isError: boolean) => ({
   },
   mantineTableContainerProps: {
     mah: 'calc(100dvh - 248px)',
+  },
+  mantineTableHeadProps: {
+    styles: {
+      thead: {
+        opacity: 1,
+      },
+    },
   },
   // option defaults (server side pagination, sorting and filter)
   enableRowActions: true,
