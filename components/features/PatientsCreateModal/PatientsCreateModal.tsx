@@ -1,5 +1,5 @@
 import { Button, Group, Stack, TextInput } from '@mantine/core';
-import { showNotification } from '@mantine/notifications';
+import { notifications, showNotification } from '@mantine/notifications';
 import { IconMail, IconPhone } from '@tabler/icons-react';
 import axios, { AxiosError } from 'axios';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -36,27 +36,22 @@ export default function PatientsCreateModal({ context, id }: ContextModalProps) 
   });
 
   const addPatientMutation = useMutation({
-    mutationFn: (values) => axios.post('/api/patients', values),
-    onSuccess: (newPatient: Patient, values: FormValues) => {
-      queryClient.setQueryData(['patients'], newPatient);
+    mutationFn: (values: FormValues) => axios.post('/api/patients', values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['searchPatients'] });
       // Show success notification
-      showNotification({
-        title: 'Exito!',
-        message: 'Se agrego el paciente correctamente',
-        color: 'green',
+      notifications.show({
+        message: 'Se creo el paciente correctamente',
       });
+      context.closeModal(id);
     },
     onError: (error: AxiosError<ErrorResponse>) => {
-      showNotification({
+      notifications.show({
         title: 'Hubo un error',
         message: error.response?.data.message,
         color: 'red',
       });
-    },
-    // Always refetch after error or success:
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
-      context.closeModal(id);
     },
   });
 
@@ -136,7 +131,7 @@ export default function PatientsCreateModal({ context, id }: ContextModalProps) 
             disabled={!isDirty || addPatientMutation.isPending}
             type="submit"
           >
-            Enviar
+            Crear
           </Button>
         </Group>
       </Stack>

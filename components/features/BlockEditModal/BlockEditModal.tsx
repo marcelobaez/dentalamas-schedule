@@ -134,8 +134,6 @@ export function BlockEditModal({ data }: ModalProps) {
 
   if (isSpecialistError) return <div>Error...</div>;
 
-  console.log(errors);
-
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Stack gap="xs">

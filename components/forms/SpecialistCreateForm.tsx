@@ -158,7 +158,6 @@ export function SpecialistCreateForm() {
       case 1:
         await trigger('treatments');
         hasErrors = Boolean(errors.treatments);
-        // console.log(errors.treatments);
         break;
       case 2:
         await trigger('workingDays');

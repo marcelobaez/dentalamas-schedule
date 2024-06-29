@@ -1,4 +1,4 @@
-import dayjs from 'dayjs';
+import dayjs, { OpUnitType } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { DateTime, Interval } from 'luxon';
 import { ZodType, z } from 'zod';
@@ -66,6 +66,7 @@ export const validateRange = (
   ranges: { startDate: string; endDate: string }[],
   onError: (field: string[]) => void,
 ) => {
+  const defaultUnitType: OpUnitType = 'second';
   const targetFromDate = dayjs(targetFrom);
   const targetToDate = dayjs(targetTo);
   return ranges.some((range) => {
@@ -74,10 +75,10 @@ export const validateRange = (
 
     // check if desired range is between a block/break range and marks both fields as errors
     if (
-      (targetFromDate.isBetween(fromDate, toDate, 'millisecond', '[]') &&
-        targetToDate.isBetween(fromDate, toDate, 'millisecond', '[]')) ||
-      (fromDate.isBetween(targetFromDate, targetToDate, 'millisecond', '[]') &&
-        toDate.isBetween(targetFromDate, targetToDate, 'millisecond', '[]'))
+      (targetFromDate.isBetween(fromDate, toDate, defaultUnitType, '[]') &&
+        targetToDate.isBetween(fromDate, toDate, defaultUnitType, '[]')) ||
+      (fromDate.isBetween(targetFromDate, targetToDate, defaultUnitType, '[]') &&
+        toDate.isBetween(targetFromDate, targetToDate, defaultUnitType, '[]'))
     ) {
       onError([fromKey, toKey]);
       return;
@@ -85,8 +86,8 @@ export const validateRange = (
 
     // check if desired from is between a block/break range and to is free and mark fromdate as error
     if (
-      targetFromDate.isBetween(fromDate, toDate, 'millisecond', '[]') &&
-      !targetToDate.isBetween(fromDate, toDate, 'millisecond', '[]')
+      targetFromDate.isBetween(fromDate, toDate, defaultUnitType, '[]') &&
+      !targetToDate.isBetween(fromDate, toDate, defaultUnitType, '[]')
     ) {
       onError([fromKey]);
       return;
@@ -94,8 +95,8 @@ export const validateRange = (
 
     // check if desired to is between a block/break range and and from is free and mark todate as error
     if (
-      !targetFromDate.isBetween(fromDate, toDate, 'millisecond', '[]') &&
-      targetToDate.isBetween(fromDate, toDate, 'millisecond', '[]')
+      !targetFromDate.isBetween(fromDate, toDate, defaultUnitType, '[]') &&
+      targetToDate.isBetween(fromDate, toDate, defaultUnitType, '[]')
     ) {
       onError([toKey]);
       return;

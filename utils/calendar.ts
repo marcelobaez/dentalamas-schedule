@@ -9,7 +9,7 @@ import { Tables } from '../types/supabase';
 import { generateEventsFromBreaks } from '.';
 
 export const generateEventData = (
-  data: AppointmentsResponse[] | null,
+  appointmentsData: AppointmentsResponse[] | null,
   specialistsData: Pick<
     Tables<'specialists'> & { breaks: Tables<'breaks'>[] } & {
       specialist_blocks: Tables<'specialist_blocks'>[];
@@ -22,8 +22,8 @@ export const generateEventData = (
   let serverEvents: EventInput[];
 
   // first thing is set events from appointments
-  serverEvents = data
-    ? data.map((item) => {
+  serverEvents = appointmentsData
+    ? appointmentsData.map((item) => {
         const appointment = item;
         return {
           id: String(item.id),

@@ -119,8 +119,9 @@ export default function AppointmentsEditDrawer({ data, onClose }: ModalProps) {
   const validateAppointmentTimes = () => {
     const errorMessage = 'Horario no disponible';
     if (selectedSpecialist && specialistsData) {
-      const targetFromDate = dayjs(selectedStartDate).add(1, 'millisecond').toDate();
-      const targetToDate = dayjs(selectedEndDate).add(-1, 'millisecond').toDate();
+      let hasErrors = false;
+      const targetFromDate = dayjs(selectedStartDate).add(1, 'second').toDate();
+      const targetToDate = dayjs(selectedEndDate).add(-1, 'second').toDate();
       const specialist = specialistsData.data.find(
         (item) => item.id === Number(selectedSpecialist),
       );
@@ -138,6 +139,7 @@ export default function AppointmentsEditDrawer({ data, onClose }: ModalProps) {
         : [];
 
       validateRange(targetFromDate, targetToDate, 'startDate', 'endDate', blocks, (fields) => {
+        hasErrors = true;
         fields.forEach((field) => {
           const key = field as keyof FormValues;
           setError(key, { type: 'validate', message: errorMessage });
@@ -145,11 +147,15 @@ export default function AppointmentsEditDrawer({ data, onClose }: ModalProps) {
       });
 
       validateRange(targetFromDate, targetToDate, 'startDate', 'endDate', breaks, (fields) => {
+        hasErrors = true;
         fields.forEach((field) => {
           const key = field as keyof FormValues;
           setError(key, { type: 'validate', message: errorMessage });
         });
       });
+      return hasErrors;
+    } else {
+      return false;
     }
   };
 
@@ -240,8 +246,8 @@ export default function AppointmentsEditDrawer({ data, onClose }: ModalProps) {
 
   // form submit
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
-    validateAppointmentTimes();
-    if (!errors) handleSubmitForm(data);
+    const hasRangeErrors = validateAppointmentTimes();
+    if (!hasRangeErrors) handleSubmitForm(data);
   };
 
   const handleDeleteAppointment = () => {

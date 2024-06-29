@@ -145,7 +145,11 @@ export default function Calendar() {
       </Alert>
     );
 
-  const serverEvents = generateEventData(data.data, specialistsData.data, dateRange, theme);
+  const filteredSpecialists = selectedSp
+    ? specialistsData.data.filter((sp) => sp.id.toString() === selectedSp)
+    : specialistsData.data;
+
+  const serverEvents = generateEventData(data.data, filteredSpecialists, dateRange, theme);
 
   return (
     <>

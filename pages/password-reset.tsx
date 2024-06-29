@@ -93,7 +93,6 @@ export default function PasswordReset() {
           color: 'red',
         });
       } else {
-        console.log(data);
         showNotification({
           title: 'Listo!',
           message: 'Ya puedes iniciar sesion con tu nueva contraseña',

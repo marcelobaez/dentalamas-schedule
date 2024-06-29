@@ -199,8 +199,8 @@ export function AppointmentCreateDrawer({
   const validateAppointmentTimes = () => {
     const errorMessage = 'Horario no disponible';
     if (selectedSpecialist && specialistsData) {
-      const targetFromDate = dayjs(selectedStartDate).add(1, 'millisecond').toDate();
-      const targetToDate = dayjs(selectedEndDate).add(-1, 'millisecond').toDate();
+      const targetFromDate = dayjs(selectedStartDate).add(1, 'second').toDate();
+      const targetToDate = dayjs(selectedEndDate).add(-1, 'second').toDate();
       const specialist = specialistsData.data.find(
         (item) => item.id === Number(selectedSpecialist),
       );
@@ -250,7 +250,6 @@ export function AppointmentCreateDrawer({
   const nextStep = async () => {
     let hasErrors = true;
     validateAppointmentTimes();
-    console.log(errors);
     switch (active) {
       case 0:
         hasErrors = !!errors.stepOne || !(await trigger('stepOne'));
