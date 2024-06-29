@@ -364,7 +364,25 @@ export function AppointmentCreateDrawer({
                 label="Fecha"
                 locale="es"
                 value={dayValue}
-                onChange={handleDayChange}
+                onChange={(value) => {
+                  handleDayChange(value);
+                  if (value) {
+                    setValue(
+                      'stepOne.startDate',
+                      createNewDate(value, dayjs(selectedStartDate).format('HH:mm')),
+                      {
+                        shouldDirty: true,
+                      },
+                    );
+                    setValue(
+                      'stepOne.endDate',
+                      createNewDate(value, dayjs(selectedEndDate).format('HH:mm')),
+                      {
+                        shouldDirty: true,
+                      },
+                    );
+                  }
+                }}
                 disabled={!selectedSpecialist}
                 excludeDate={(date) => {
                   const specialist = specialistsData.data.find(

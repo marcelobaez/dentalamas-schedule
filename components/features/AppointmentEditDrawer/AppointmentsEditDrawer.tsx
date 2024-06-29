@@ -337,8 +337,25 @@ export default function AppointmentsEditDrawer({ data, onClose }: ModalProps) {
               label="Fecha"
               locale="es"
               value={dayValue}
-              onChange={handleDayChange}
-              // disabled={!selectedSpecialist}
+              onChange={(value) => {
+                handleDayChange(value);
+                if (value) {
+                  setValue(
+                    'startDate',
+                    createNewDate(value, dayjs(selectedStartDate).format('HH:mm')),
+                    {
+                      shouldDirty: true,
+                    },
+                  );
+                  setValue(
+                    'endDate',
+                    createNewDate(value, dayjs(selectedEndDate).format('HH:mm')),
+                    {
+                      shouldDirty: true,
+                    },
+                  );
+                }
+              }}
               excludeDate={(date) => {
                 const specialist = specialistsData.data.find(
                   (item) => item.id === Number(selectedSpecialist),
