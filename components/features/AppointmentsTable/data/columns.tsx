@@ -3,15 +3,14 @@ import { useMemo } from 'react';
 import { AppointmentsResponse } from '../../../../types/appointment';
 import { Avatar, Badge, Box, Group, Text } from '@mantine/core';
 import { DateTime } from 'luxon';
-import { getAvatarFromNames } from '../../../../utils/getAvatarName';
 import {
   getSwatchColorComponent,
   mapAttendedStateToColor,
   mapAttendedStateToMsg,
 } from '../AppointmentsTable.utils';
-import StethoscopeIcon from '../../../assets/icons/StethoscopeIcon';
 import dayjs from 'dayjs';
-import { DATE_FORMAT, DATE_FORMAT_WITH_TIME } from '../../../../utils/constants';
+import { DATE_FORMAT } from '../../../../utils/constants';
+import DoctorIcon from '../../../assets/icons/DoctorIcon';
 
 export const useAppointmentColumns = () => {
   const columns = useMemo<MRT_ColumnDef<AppointmentsResponse>[]>(
@@ -51,7 +50,7 @@ export const useAppointmentColumns = () => {
       },
       {
         accessorKey: 'specialists',
-        header: 'Doctor',
+        header: 'Profesional',
         Cell: ({ row }) => (
           <Group gap="sm">
             <Avatar
@@ -62,7 +61,7 @@ export const useAppointmentColumns = () => {
                 position: 'initial',
               }}
             >
-              <StethoscopeIcon width="1.1rem" height="1.1rem" />
+              <DoctorIcon width="1.1rem" height="1.1rem" />
             </Avatar>
             <Text size="sm" fw={500}>
               {`${row.original.specialists.firstName} ${row.original.specialists.lastName}`}
@@ -72,7 +71,7 @@ export const useAppointmentColumns = () => {
       },
       {
         accessorKey: 'treatments',
-        header: 'Motivo',
+        header: 'Tratamiento',
         Cell: ({ row }) => <Text fz="sm">{row.original.treatments.name}</Text>,
       },
       {

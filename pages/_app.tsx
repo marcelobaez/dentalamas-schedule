@@ -6,7 +6,6 @@ import { MantineColorsTuple, MantineProvider, createTheme } from '@mantine/core'
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import AppShellLayout from '../components/layout/AppShell';
-import { NavigationProgress } from '@mantine/nprogress';
 import {
   DehydratedState,
   HydrationBoundary,
@@ -18,11 +17,13 @@ import PatientsCreateModal from '../components/features/PatientsCreateModal/Pati
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/nprogress/styles.css';
+import '@mantine/notifications/styles.css';
 import 'mantine-react-table/styles.css';
 import React from 'react';
 import { DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/es';
 import '../styles/globals.css';
+import { RouteTransition } from '../components/RouteTransition';
 
 export type NextPageWithLayout<P = {}, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: ReactElement) => ReactNode;
@@ -98,7 +99,7 @@ function MyApp({ Component, pageProps, dehydratedState }: AppPropsWithLayout) {
               }}
             >
               <ModalsProvider modals={{ patientsCreate: PatientsCreateModal }}>
-                <NavigationProgress />
+                <RouteTransition />
                 <Notifications position="top-center" />
                 {getLayout(<Component {...pageProps} />)}
                 <ReactQueryDevtools />

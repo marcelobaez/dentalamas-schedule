@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { RequestParams } from '../../types/api';
 import useSupabaseBrowser from '../../utils/supabase/component';
 
 export default function useSpecialists() {
@@ -10,7 +9,7 @@ export default function useSpecialists() {
       const { data, count, error } = await supabase
         .from('specialists')
         .select(
-          'id, created_at, firstName, lastName, title, email, phone, streetAddress, locations(*), specialist_working_days(*), treatments(*), specialist_treatments(*)',
+          'id, created_at, firstName, lastName, title, email, phone, streetAddress, locations(*), specialist_working_days(*), treatments(*), specialist_treatments(*), non_working_days(*), breaks(*), specialist_blocks(*)',
           {
             count: 'exact',
           },

@@ -8,15 +8,6 @@ interface AppointmentsState {
   name: string;
 }
 
-// type AppointmentStates = Database['public']['Tables']['appointments_states']['Row'];
-
-// export type AppointmentsResponse = Database['public']['Tables']['appointments']['Row'] & {
-//   appointments_states: AppointmentStates[];
-//   treatments: Database['public']['Tables']['treatments']['Row'];
-//   specialists: Database['public']['Tables']['specialists']['Row'];
-//   patients: Database['public']['Tables']['patients']['Row'];
-// };
-
 export interface AppointmentsResponse {
   id: number;
   treatments: Treatment;
@@ -31,9 +22,9 @@ export interface AppointmentsResponse {
   updated_at: string;
 }
 
-export interface AppointmentRequest {
-  startDate: Date;
-  endDate: Date;
+export interface AppointmentUpdateRequest {
+  startDate: string;
+  endDate: string;
   patient_id: number;
   treatment_id: number;
   specialist_id: number;

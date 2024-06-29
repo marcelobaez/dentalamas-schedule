@@ -5,14 +5,28 @@ import {
   Stepper,
   TextInput,
   Switch,
-  Divider,
   Text,
   Checkbox,
   Alert,
   Title,
   Box,
+  LoadingOverlay,
+  ThemeIcon,
+  List,
+  rem,
+  ActionIcon,
+  Card,
 } from '@mantine/core';
-import { IconBuilding, IconCheck, IconMail, IconPhone } from '@tabler/icons-react';
+import {
+  IconBuilding,
+  IconCheck,
+  IconClockOff,
+  IconInfoCircle,
+  IconMail,
+  IconPhone,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
 import { useCallback, useState } from 'react';
 import { SubmitHandler, useFieldArray, useForm } from 'react-hook-form';
 import { TimeInput } from '@mantine/dates';
@@ -22,6 +36,15 @@ import { Specialist } from '../../types/specialist';
 import useSupabaseBrowser from '../../utils/supabase/component';
 import { showNotification } from '@mantine/notifications';
 import React from 'react';
+import { useRouter } from 'next/router';
+import { modals } from '@mantine/modals';
+import { Tables } from '../../types/supabase';
+import { BreakNewForm } from './BreakNewForm';
+import { DEFAULT_WORKING_DAYS, dayNames } from '../../utils/constants';
+
+export type BreakAddRequest = Omit<Tables<'breaks'>, 'id' | 'created_at' | 'specialist_id'> & {
+  uid: string;
+};
 
 type FormValues = {
   specialist: {
@@ -34,69 +57,16 @@ type FormValues = {
   };
   workingDays: { checked: boolean; start_time: string; end_time: string; day_of_week: number }[];
   treatments: { id: number; name: string; checked: boolean }[];
+  breaks: BreakAddRequest[];
 };
-
-const dayNames: Record<number, string> = {
-  1: 'Lunes',
-  2: 'Martes',
-  3: 'Miercoles',
-  4: 'Jueves',
-  5: 'Viernes',
-  6: 'Sabado',
-  7: 'Domingo',
-};
-
-const DEFAULT_WORKING_DAYS = [
-  {
-    checked: false,
-    day_of_week: 1,
-    start_time: '09:00',
-    end_time: '17:00',
-  },
-  {
-    checked: false,
-    day_of_week: 2,
-    start_time: '09:00',
-    end_time: '17:00',
-  },
-  {
-    checked: false,
-    day_of_week: 3,
-    start_time: '09:00',
-    end_time: '17:00',
-  },
-  {
-    checked: false,
-    day_of_week: 4,
-    start_time: '09:00',
-    end_time: '17:00',
-  },
-  {
-    checked: false,
-    day_of_week: 5,
-    start_time: '09:00',
-    end_time: '17:00',
-  },
-  {
-    checked: false,
-    day_of_week: 6,
-    start_time: '09:00',
-    end_time: '17:00',
-  },
-  {
-    checked: false,
-    day_of_week: 7,
-    start_time: '09:00',
-    end_time: '17:00',
-  },
-];
 
 export function SpecialistCreateForm() {
+  const router = useRouter();
   const supabase = useSupabaseBrowser();
   const queryClient = useQueryClient();
   const [active, setActive] = useState(0);
 
-  const { data: treatmentsData, isLoading, isError } = useTreatments();
+  const { data: treatmentsData, status } = useTreatments();
 
   // form state
   const {
@@ -109,7 +79,7 @@ export function SpecialistCreateForm() {
     watch,
     formState: { errors },
   } = useForm<FormValues>({
-    defaultValues: {
+    values: {
       specialist: {
         firstName: '',
         lastName: '',
@@ -120,8 +90,9 @@ export function SpecialistCreateForm() {
       },
       workingDays: DEFAULT_WORKING_DAYS,
       treatments: treatmentsData
-        ? treatmentsData.map((item) => ({ id: item.id, name: item.name, checked: false }))
+        ? treatmentsData.data.map((item) => ({ id: item.id, name: item.name, checked: false }))
         : [],
+      breaks: [],
     },
   });
 
@@ -133,6 +104,11 @@ export function SpecialistCreateForm() {
   const { fields: treatmentsFields } = useFieldArray({
     control,
     name: 'treatments',
+  });
+
+  const { fields: breaksFields } = useFieldArray({
+    control,
+    name: 'breaks',
   });
 
   const watchWorkFieldArray = watch('workingDays');
@@ -150,6 +126,14 @@ export function SpecialistCreateForm() {
       ...watchTreatmentFieldArray[index],
     };
   });
+
+  const watchBreakFieldArray = watch('breaks');
+  // const controlledBreakFields = breaksFields.map((field, index) => {
+  //   return {
+  //     ...field,
+  //     ...watchBreakFieldArray[index],
+  //   };
+  // });
 
   const validateTreatments = useCallback(() => {
     const errorMessage = 'Debe elegir al menos un tratamiento';
@@ -196,14 +180,14 @@ export function SpecialistCreateForm() {
 
   // Create staff mutation
   const createWorkDaysMutation = useMutation({
-    mutationFn: async (values) => {
+    mutationFn: async (values: FormValues['specialist']) => {
       const { data, error } = await supabase.from('specialists').insert(values).select();
 
       if (error) throw new Error('Couldnt create new specialist');
 
       return data;
     },
-    onSuccess: async (data: Specialist[], variables: FormValues['specialist']) => {
+    onSuccess: async (data: Specialist[]) => {
       const filteredWorkDays = getValues('workingDays')
         .filter((item) => item.checked)
         .map((item, idx) => ({
@@ -217,8 +201,17 @@ export function SpecialistCreateForm() {
         .filter((item) => item.checked)
         .map((item) => ({ specialist_id: data[0].id, treatment_id: item.id }));
 
+      const breaks = getValues('breaks').map((item) => ({
+        day_of_week: item.day_of_week,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        recurring: item.recurring,
+        specialist_id: data[0].id,
+      }));
+
       await supabase.from('specialist_working_days').insert(filteredWorkDays);
       await supabase.from('specialist_treatments').insert(filteredTreatments);
+      await supabase.from('breaks').insert(breaks);
 
       queryClient.invalidateQueries({ queryKey: ['specialists'] });
 
@@ -231,224 +224,319 @@ export function SpecialistCreateForm() {
     },
   });
 
+  const handleAddBreak = (values: BreakAddRequest) => {
+    const newBreaks = watchBreakFieldArray;
+    newBreaks.push(values);
+    setValue('breaks', newBreaks);
+  };
+
+  const handleDeleteBreak = (uid: string) => {
+    const newBreaks = watchBreakFieldArray.filter((item) => item.uid !== uid);
+    setValue('breaks', newBreaks);
+  };
+
+  const handleOpenCreateBreak = (day: number) => {
+    modals.open({
+      title: 'Nuevo break',
+      children: <BreakNewForm onSuccess={(values) => handleAddBreak(values)} day_of_week={day} />,
+    });
+  };
+
   const onSubmit: SubmitHandler<FormValues> = (data) =>
     createWorkDaysMutation.mutate(data.specialist);
 
+  if (status === 'pending')
+    return (
+      <Box pos="relative">
+        <LoadingOverlay visible zIndex={1000} overlayProps={{ radius: 'sm', blur: 2 }} />
+      </Box>
+    );
+
+  if (status === 'error') return <div>Hubo un error</div>;
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Stepper
-        active={active}
-        onStepClick={(stepIndex) => {
-          if (active === 3) return;
-          setActive(stepIndex);
-        }}
-        size="sm"
-        iconSize={32}
-        allowNextStepsSelect={false}
-      >
-        <Stepper.Step label="Paso 1" description="Informacion basica">
-          <Stack>
-            <Title order={5} fw={500} py="sm">
-              Complete la informacion basica
-            </Title>
-            <Group grow>
-              <TextInput
-                required
-                label="Nombre"
-                placeholder="Nombre"
-                min={3}
-                error={
-                  errors.specialist?.firstName
-                    ? errors.specialist.firstName.type === 'minLength'
-                      ? 'Longitud minima (3 caracteres)'
-                      : 'Este campo es requerido'
-                    : ''
-                }
-                {...register('specialist.firstName', { required: true, minLength: 3 })}
-              />
-              <TextInput
-                required
-                label="Apellido"
-                placeholder="Apellido"
-                min={3}
-                error={
-                  errors.specialist?.lastName
-                    ? errors.specialist.lastName.type === 'minLength'
-                      ? 'Longitud minima (3 caracteres)'
-                      : 'Este campo es requerido'
-                    : ''
-                }
-                {...register('specialist.lastName', { required: true, minLength: 3 })}
-              />
-            </Group>
-            <Group grow>
-              <TextInput
-                required
-                label="Celular"
-                placeholder="Celular"
-                leftSection={<IconPhone size={14} />}
-                error={
-                  errors.specialist?.phone
-                    ? errors.specialist.phone.type === 'pattern'
-                      ? 'Numero no valido'
-                      : 'Este campo es requerido'
-                    : ''
-                }
-                {...register('specialist.phone', {
-                  required: true,
-                  pattern: /^(?:(?:00)?549?)?0?(?:11|[2368]\d)(?:(?=\d{0,2}15)\d{2})??\d{8}$/,
-                })}
-              />
-              <TextInput
-                label="Email"
-                required
-                placeholder="mail@ejemplo.com"
-                leftSection={<IconMail size={14} />}
-                error={
-                  errors.specialist?.email
-                    ? errors.specialist.email.type === 'pattern'
-                      ? 'Email no valido'
-                      : 'Este campo es requerido'
-                    : ''
-                }
-                {...register('specialist.email', { pattern: /^\S+@\S+$/, required: true })}
-              />
-            </Group>
-            <Group grow>
-              <TextInput
-                required
-                label="Especialidad"
-                placeholder="Odontologia general, Endodoncia, Cirugia"
-                min={8}
-                error={
-                  errors.specialist?.title
-                    ? errors.specialist.title.type === 'minLength'
-                      ? 'Longitud minima (8 caracteres)'
-                      : 'Este campo es requerido'
-                    : ''
-                }
-                {...register('specialist.title', { required: true, minLength: 8 })}
-              />
-            </Group>
-            <Group grow>
-              <TextInput
-                required
-                label="Direccion"
-                placeholder="Calle 1234, Piso"
-                leftSection={<IconBuilding size={14} />}
-                min={6}
-                error={
-                  errors.specialist?.streetAddress
-                    ? errors.specialist.streetAddress.type === 'minLength'
-                      ? 'Longitud minima (6 caracteres)'
-                      : 'Este campo es requerido'
-                    : ''
-                }
-                {...register('specialist.streetAddress', { required: true, minLength: 6 })}
-              />
-            </Group>
-          </Stack>
-        </Stepper.Step>
-        <Stepper.Step label="Paso 2" description="Tratamientos">
-          <Stack>
-            <Box pt="sm">
-              <Title order={5} fw={500}>
-                Elija los tratamientos
-              </Title>
-              {errors.treatments && (
-                <Text component="p" c="red" fz="xs">
-                  Debe elegir al menos un tratamiento
-                </Text>
-              )}
-            </Box>
-            {controlledTreatmentFields.map((field, index) => (
-              <Checkbox
-                {...register(`treatments.${index}.checked`, { validate: validateTreatments })}
-                key={field.id}
-                label={field.name}
-                styles={{ label: { fontWeight: 600 } }}
-              />
-            ))}
-          </Stack>
-        </Stepper.Step>
-        <Stepper.Step
-          label="Paso 3"
-          description="Dias laborales"
-          loading={createWorkDaysMutation.isPending}
+    <Stack>
+      <Title order={1} fz="1.35rem">
+        Crear profesional
+      </Title>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Stepper
+          active={active}
+          onStepClick={(stepIndex) => {
+            if (active === 3) return;
+            setActive(stepIndex);
+          }}
+          size="sm"
+          iconSize={32}
+          allowNextStepsSelect={false}
         >
-          <Stack gap="xs">
-            <Box pt="sm">
-              <Title order={5} fw={500}>
-                Indique los dias de trabajo
+          <Stepper.Step label="Paso 1" description="Informacion basica">
+            <Stack>
+              <Title order={5} fw={500} py="sm">
+                Complete la informacion basica
               </Title>
-              {errors.workingDays && (
-                <Text component="p" c="red" fz="xs">
-                  Debe elegir al menos un dia
-                </Text>
-              )}
-            </Box>
-            {controlledWorkFields.map((field, index) => {
-              const isChecked = getValues(`workingDays.${index}.checked`);
-              return (
-                <React.Fragment key={`section-${field.id}-${index}`}>
-                  <Group key={`group-${field.id}`} justify="space-between">
-                    <Switch
-                      {...register(`workingDays.${index}.checked`, { validate: validateWorkDays })}
-                      checked={isChecked}
-                      key={field.id}
-                      styles={{ label: { fontWeight: 600 } }}
-                      label={dayNames[index + 1]}
-                    />
-                    {!isChecked && (
-                      <Text fz="sm" c="dimmed">
-                        No trabaja este dia
-                      </Text>
-                    )}
-                    {isChecked && (
-                      <Group>
-                        <TimeInput
-                          {...register(`workingDays.${index}.start_time`)}
-                          key={`${field.id}-start-time`}
-                          error={
-                            errors.workingDays ? errors.workingDays[index]?.start_time?.message : ''
-                          }
-                          required
-                        />
-                        <Text component="span" fz="sm">{` a `}</Text>
-                        <TimeInput
-                          {...register(`workingDays.${index}.end_time`)}
-                          key={`${field.id}-end-time`}
-                          required
-                        />
-                      </Group>
-                    )}
-                  </Group>
-                  {index < workDaysFields.length - 1 && <Divider />}
-                </React.Fragment>
-              );
-            })}
-          </Stack>
-        </Stepper.Step>
-        <Stepper.Completed>
-          <Alert
-            variant="transparent"
-            radius="md"
-            title="Profesional agregado correctamente"
-            icon={<IconCheck />}
+              <Group grow>
+                <TextInput
+                  required
+                  label="Nombre"
+                  placeholder="Nombre"
+                  min={3}
+                  error={
+                    errors.specialist?.firstName
+                      ? errors.specialist.firstName.type === 'minLength'
+                        ? 'Longitud minima (3 caracteres)'
+                        : 'Este campo es requerido'
+                      : ''
+                  }
+                  {...register('specialist.firstName', { required: true, minLength: 3 })}
+                />
+                <TextInput
+                  required
+                  label="Apellido"
+                  placeholder="Apellido"
+                  min={3}
+                  error={
+                    errors.specialist?.lastName
+                      ? errors.specialist.lastName.type === 'minLength'
+                        ? 'Longitud minima (3 caracteres)'
+                        : 'Este campo es requerido'
+                      : ''
+                  }
+                  {...register('specialist.lastName', { required: true, minLength: 3 })}
+                />
+              </Group>
+              <Group grow>
+                <TextInput
+                  required
+                  label="Celular"
+                  placeholder="Celular"
+                  leftSection={<IconPhone size={14} />}
+                  error={
+                    errors.specialist?.phone
+                      ? errors.specialist.phone.type === 'pattern'
+                        ? 'Numero no valido'
+                        : 'Este campo es requerido'
+                      : ''
+                  }
+                  {...register('specialist.phone', {
+                    required: true,
+                    pattern: /^(?:(?:00)?549?)?0?(?:11|[2368]\d)(?:(?=\d{0,2}15)\d{2})??\d{8}$/,
+                  })}
+                />
+                <TextInput
+                  label="Email"
+                  required
+                  placeholder="mail@ejemplo.com"
+                  leftSection={<IconMail size={14} />}
+                  error={
+                    errors.specialist?.email
+                      ? errors.specialist.email.type === 'pattern'
+                        ? 'Email no valido'
+                        : 'Este campo es requerido'
+                      : ''
+                  }
+                  {...register('specialist.email', { pattern: /^\S+@\S+$/, required: true })}
+                />
+              </Group>
+              <Group grow>
+                <TextInput
+                  required
+                  label="Especialidad"
+                  placeholder="Odontologia general, Endodoncia, Cirugia"
+                  min={8}
+                  error={
+                    errors.specialist?.title
+                      ? errors.specialist.title.type === 'minLength'
+                        ? 'Longitud minima (8 caracteres)'
+                        : 'Este campo es requerido'
+                      : ''
+                  }
+                  {...register('specialist.title', { required: true, minLength: 8 })}
+                />
+              </Group>
+              <Group grow>
+                <TextInput
+                  required
+                  label="Direccion"
+                  placeholder="Calle 1234, Piso"
+                  leftSection={<IconBuilding size={14} />}
+                  min={6}
+                  error={
+                    errors.specialist?.streetAddress
+                      ? errors.specialist.streetAddress.type === 'minLength'
+                        ? 'Longitud minima (6 caracteres)'
+                        : 'Este campo es requerido'
+                      : ''
+                  }
+                  {...register('specialist.streetAddress', { required: true, minLength: 6 })}
+                />
+              </Group>
+            </Stack>
+          </Stepper.Step>
+          <Stepper.Step label="Paso 2" description="Tratamientos">
+            <Stack>
+              <Box pt="sm">
+                <Title order={5} fw={500}>
+                  Elija los tratamientos
+                </Title>
+                {errors.treatments && (
+                  <Text component="p" c="red" fz="xs">
+                    Debe elegir al menos un tratamiento
+                  </Text>
+                )}
+              </Box>
+              {controlledTreatmentFields.map((field, index) => (
+                <Checkbox
+                  {...register(`treatments.${index}.checked`, { validate: validateTreatments })}
+                  key={field.id}
+                  label={field.name}
+                  styles={{ label: { fontWeight: 600 } }}
+                />
+              ))}
+            </Stack>
+          </Stepper.Step>
+          <Stepper.Step
+            label="Paso 3"
+            description="Dias laborales"
+            loading={createWorkDaysMutation.isPending}
           >
-            Puede cerrar este panel para ver su registro creado.
-          </Alert>
-        </Stepper.Completed>
-      </Stepper>
-      <Group justify="flex-end" mt="xl">
-        {active !== 0 && active !== 3 && (
-          <Button variant="default" onClick={prevStep}>
-            Anterior
-          </Button>
-        )}
-        {active !== 2 && active !== 3 && <Button onClick={nextStep}>Siguiente</Button>}
-        {active === 2 && <Button onClick={handleSubmit(onSubmit)}>Finalizar</Button>}
-      </Group>
-    </form>
+            <Stack gap="xs">
+              <Box pt="sm">
+                <Title order={5} fw={500}>
+                  Indique los dias de trabajo
+                </Title>
+                {errors.workingDays && (
+                  <Text component="p" c="red" fz="xs">
+                    Debe elegir al menos un dia
+                  </Text>
+                )}
+              </Box>
+              <Stack gap="xs">
+                {controlledWorkFields.map((field, index) => {
+                  const isChecked = getValues(`workingDays.${index}.checked`);
+                  return (
+                    <Card shadow="sm" padding="lg" radius="md" withBorder key={field.id}>
+                      <Stack gap="xs">
+                        <Group justify="space-between">
+                          <Switch
+                            {...register(`workingDays.${index}.checked`, {
+                              validate: validateWorkDays,
+                            })}
+                            checked={isChecked}
+                            key={field.id}
+                            styles={{ label: { fontWeight: 600 } }}
+                            label={dayNames[index + 1]}
+                          />
+
+                          {!isChecked && (
+                            <Text fz="sm" c="dimmed">
+                              No trabaja este dia
+                            </Text>
+                          )}
+                          {isChecked && (
+                            <Group>
+                              <TimeInput
+                                {...register(`workingDays.${index}.start_time`)}
+                                key={`${field.id}-start-time`}
+                                error={
+                                  errors.workingDays
+                                    ? errors.workingDays[index]?.start_time?.message
+                                    : ''
+                                }
+                                required
+                              />
+                              <Text component="span" fz="sm">{` a `}</Text>
+                              <TimeInput
+                                {...register(`workingDays.${index}.end_time`)}
+                                key={`${field.id}-end-time`}
+                                required
+                              />
+                              <Button
+                                variant="outline"
+                                leftSection={<IconPlus size="0.8rem" strokeWidth={3} />}
+                                onClick={() => handleOpenCreateBreak(field.day_of_week)}
+                              >
+                                Receso
+                              </Button>
+                            </Group>
+                          )}
+                        </Group>
+                        {breaksFields.length > 0 ? (
+                          <List
+                            spacing="xs"
+                            size="sm"
+                            center
+                            icon={
+                              <ThemeIcon color="orange" size={24} radius="xl">
+                                <IconClockOff style={{ width: rem(16), height: rem(16) }} />
+                              </ThemeIcon>
+                            }
+                          >
+                            {breaksFields
+                              .filter((item) => item.day_of_week === field.day_of_week)
+                              .map((field) => {
+                                return (
+                                  <List.Item key={field.id}>
+                                    <Group>
+                                      <Text fz="sm">{`${field.start_time} - ${field.end_time}`}</Text>
+                                      <ActionIcon
+                                        onClick={(e) => handleDeleteBreak(field.uid)}
+                                        color="red"
+                                        variant="transparent"
+                                        size="sm"
+                                      >
+                                        <IconTrash />
+                                      </ActionIcon>
+                                    </Group>
+                                  </List.Item>
+                                );
+                              })}
+                          </List>
+                        ) : (
+                          !breaksFields.some((item) => item.day_of_week === field.day_of_week) && (
+                            <Alert
+                              variant="default"
+                              color="blue"
+                              title="No hay recesos configurados"
+                              icon={<IconInfoCircle />}
+                            />
+                          )
+                        )}
+                      </Stack>
+                    </Card>
+                  );
+                })}
+              </Stack>
+            </Stack>
+          </Stepper.Step>
+          <Stepper.Completed>
+            <Stack justify="center" pt="md" gap="sm">
+              <Group justify="center">
+                <ThemeIcon color="darkPurple.7" variant="white" size={70}>
+                  <IconCheck style={{ width: '100%', height: '100%', strokeWidth: 1 }} />
+                </ThemeIcon>
+              </Group>
+              <Group justify="center">
+                <Text fw={600} fz="sm" c="darkPurple.3">
+                  Profesional agregado correctamente
+                </Text>
+              </Group>
+              <Group justify="center">
+                <Button onClick={() => router.push('/specialists')}>Volver al listado</Button>
+              </Group>
+            </Stack>
+          </Stepper.Completed>
+        </Stepper>
+        <Group justify="flex-end" mt="xl">
+          {active !== 0 && active !== 3 && (
+            <Button variant="default" onClick={prevStep}>
+              Anterior
+            </Button>
+          )}
+          {active !== 2 && active !== 3 && <Button onClick={nextStep}>Siguiente</Button>}
+          {active === 2 && <Button onClick={handleSubmit(onSubmit)}>Finalizar</Button>}
+        </Group>
+      </form>
+    </Stack>
   );
 }

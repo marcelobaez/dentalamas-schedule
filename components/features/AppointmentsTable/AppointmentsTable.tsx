@@ -1,30 +1,19 @@
 import {
-  ActionIcon,
   Avatar,
   Button,
+  Drawer,
   Grid,
   Group,
   LoadingOverlay,
   Select,
   Text,
-  Tooltip,
+  rem,
 } from '@mantine/core';
-import { openConfirmModal, openContextModal, useModals } from '@mantine/modals';
-import { showNotification } from '@mantine/notifications';
-import {
-  IconEdit,
-  IconCheck,
-  IconTrash,
-  IconCalendar,
-  IconPlus,
-  IconClock2,
-} from '@tabler/icons-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { IconCalendar, IconPlus, IconClock2 } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useIsMobile } from '../../../hooks/useIsMobile/useIsMobile';
 import { AppointmentsResponse } from '../../../types/appointment';
-import AppointmentsEditModal from '../AppointmentsEditModal/AppointmentsEditModal';
+import AppointmentsEditDrawer from '../AppointmentEditDrawer/AppointmentsEditDrawer';
 import {
   MantineReactTable,
   MRT_PaginationState,
@@ -34,15 +23,17 @@ import {
 import dayjs from 'dayjs';
 import useAppointments from '../../../hooks/useAppointments/useAppointments';
 import { useAppointmentColumns } from './data/columns';
-import { DatePickerInput, DatesRangeValue } from '@mantine/dates';
-import AppointmentsCreateModal from '../AppointmentsCreateModal/AppointmentsCreateModal';
+import { DatePickerInput } from '@mantine/dates';
 import useTreatments from '../../../hooks/useTreatments/useTreatments';
 import useSpecialists from '../../../hooks/useSpecialists/useSpecialists';
 import { getMantineStyleAndOpts } from '../../../utils';
+import { AppointmentCreateDrawer } from '../AppointmentCreateDrawer/AppointmentCreateDrawer';
+import { useDisclosure } from '@mantine/hooks';
 
 export default function AppointmentsTable() {
-  const queryClient = useQueryClient();
-  const modals = useModals();
+  const [createOpened, { open, close }] = useDisclosure(false);
+  const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
+  const [selectedAppointment, setSelectedAp] = useState<AppointmentsResponse>();
   const isMobile = useIsMobile();
   const columns = useAppointmentColumns();
   const { data: treatmentsData, isLoading: isLoadingTreatments } = useTreatments();
@@ -84,102 +75,15 @@ export default function AppointmentsTable() {
     return { fetchedAppointments, totalRowCount };
   }, [data]);
 
-  // Create appointment mutation
-  const { mutate } = useMutation({
-    mutationFn: (id) => axios.delete(`/api/appointments/${id}`),
-    onSuccess: (newAppointment: AppointmentsResponse, id: string) => {
-      queryClient.setQueryData(['appointments'], newAppointment);
-      // Show success notification
-      showNotification({
-        title: 'Exito!',
-        message: 'Se elimino el turno correctamente',
-        color: 'green',
-        icon: <IconCheck />,
-      });
-    },
-    // Always refetch after error or success:
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      modals.closeModal('appointmentsEditModal');
-    },
-  });
-
-  const openEditModal = (item: AppointmentsResponse) => {
-    modals.openModal({
-      modalId: 'appointmentsEditModal',
-      centered: true,
-      size: isMobile ? '100%' : '55%',
-      title: 'Editar turno',
-      children: <AppointmentsEditModal data={item} />,
-    });
-  };
-
-  const openDeleteModal = (id: string) =>
-    openConfirmModal({
-      title: 'Eliminar el turno',
-      children: (
-        <Text size="sm">Seguro que quiere eliminar el turno? Esta accion no es reversible</Text>
-      ),
-      centered: true,
-      labels: { confirm: 'Eliminar turno', cancel: 'Cancelar' },
-      confirmProps: { color: 'red' },
-      onCancel: () => console.log('Cancel'),
-      onConfirm: () => mutate(id),
-    });
-
-  const openCreatePatientModal = () => {
-    openContextModal({
-      modal: 'patientsCreate',
-      size: 460,
-      title: 'Registrar paciente',
-      innerProps: {},
-    });
-  };
-
-  const openCreateAppointmentModal = () => {
-    modals.openModal({
-      modalId: 'appointmentsCreateModal',
-      centered: true,
-      size: isMobile ? '100%' : '55%',
-      title: 'Registrar turno',
-      children: (
-        <AppointmentsCreateModal
-          onClose={() => {
-            modals.closeModal('appointmentsCreateModal');
-          }}
-          onCreatePatient={() => openCreatePatientModal()}
-        />
-      ),
-    });
-  };
-
   const table = useMantineReactTable({
     columns,
     data: memoData.fetchedAppointments,
     rowCount: memoData.totalRowCount,
     ...getMantineStyleAndOpts<AppointmentsResponse>(isError),
+    enableRowActions: false,
     initialState: { showColumnFilters: false },
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
-    renderRowActions: ({ row }) => (
-      <Group>
-        <Tooltip label="Editar turno">
-          <ActionIcon size="1rem" variant="transparent">
-            <IconEdit onClick={() => openEditModal(row.original)} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Eliminar turno">
-          <ActionIcon
-            variant="transparent"
-            onClick={() => openDeleteModal(String(row.original.id))}
-            color="red"
-            size="1rem"
-          >
-            <IconTrash stroke={1.5} />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
-    ),
     renderTopToolbarCustomActions: () => (
       <Group align="center" gap="xs">
         <Avatar color="violet" radius="md">
@@ -193,6 +97,15 @@ export default function AppointmentsTable() {
         </Text>
       </Group>
     ),
+    mantineTableBodyRowProps: ({ row }) => ({
+      onClick: (event) => {
+        setSelectedAp(row.original);
+        openEdit();
+      },
+      sx: {
+        cursor: 'pointer',
+      },
+    }),
     state: {
       density: 'xs',
       isLoading,
@@ -254,7 +167,7 @@ export default function AppointmentsTable() {
                   label: 'Todos los tipos',
                   value: '',
                 },
-                ...treatmentsData.map((item) => ({
+                ...treatmentsData.data.map((item) => ({
                   label: item.name,
                   value: String(item.id),
                 })),
@@ -263,7 +176,7 @@ export default function AppointmentsTable() {
             />
             <Button
               leftSection={<IconPlus />}
-              onClick={() => openCreateAppointmentModal()}
+              onClick={() => open()}
               w={{ base: '100%', sm: 'auto' }}
             >
               Nuevo turno
@@ -274,6 +187,30 @@ export default function AppointmentsTable() {
       <Grid.Col span={12}>
         <MantineReactTable table={table} />
       </Grid.Col>
+      <Drawer
+        opened={createOpened}
+        onClose={close}
+        position="right"
+        offset={isMobile ? 0 : 8}
+        radius="md"
+        size={rem(500)}
+        title="Nuevo turno"
+      >
+        <AppointmentCreateDrawer onClose={close} />
+      </Drawer>
+      <Drawer
+        opened={editOpened}
+        onClose={closeEdit}
+        position="right"
+        offset={isMobile ? 0 : 8}
+        radius="md"
+        size={rem(500)}
+        withCloseButton={false}
+      >
+        {selectedAppointment && (
+          <AppointmentsEditDrawer data={selectedAppointment} onClose={closeEdit} />
+        )}
+      </Drawer>
     </>
   );
 }

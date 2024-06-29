@@ -12,7 +12,6 @@ import {
   Box,
   PasswordInput,
   Space,
-  Divider,
 } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { useRouter } from 'next/router';
@@ -21,11 +20,6 @@ import Logo from '../components/layout/Logo';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import classes from '../styles/pages/login.module.css';
 import useSupabaseBrowser from '../utils/supabase/component';
-import { getURL } from '../utils';
-
-type OTPFormValues = {
-  email: string;
-};
 
 type EmailFormvalues = {
   email: string;
@@ -35,29 +29,17 @@ type EmailFormvalues = {
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [emailLoading, setEmailLoading] = useState(false);
   const supabase = useSupabaseBrowser();
 
   // form state
   const {
     register,
     handleSubmit,
-    formState: { errors, isDirty, isSubmitting },
+    formState: { errors, isSubmitting },
   } = useForm<EmailFormvalues>({
     values: {
       email: '',
       password: '',
-    },
-  });
-
-  // form state
-  const {
-    register: registerOTP,
-    handleSubmit: handleSubmitOTP,
-    formState: { errors: errorsOTP },
-  } = useForm<OTPFormValues>({
-    defaultValues: {
-      email: '',
     },
   });
 
@@ -93,42 +75,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleEmailLogin = async (values: OTPFormValues) => {
-    try {
-      setEmailLoading(true);
-      const { error } = await supabase.auth.signInWithOtp({
-        email: values.email,
-        options: {
-          emailRedirectTo: getURL(),
-        },
-      });
-      if (error && error.status === 403) {
-        showNotification({
-          title: 'Lo sentimos!',
-          message: 'Los registros no estan habilitados. Solicite al administrador una cuenta',
-          color: 'red',
-        });
-      } else {
-        showNotification({
-          title: 'Listo!',
-          message: 'Revisa tu email para encontrar el link de acceso',
-          color: 'green',
-        });
-      }
-    } catch (error) {
-      showNotification({
-        title: 'Lo sentimos!',
-        message: 'Ocurrio un error al intentar inciar sesion',
-        color: 'red',
-      });
-    } finally {
-      setEmailLoading(false);
-    }
-  };
-
   const onSubmit: SubmitHandler<EmailFormvalues> = (data) => handleLoginWithEmail(data);
-
-  const onOTPSubmit: SubmitHandler<OTPFormValues> = (data) => handleEmailLogin(data);
 
   return (
     <Container size={500} my={30}>
@@ -153,9 +100,9 @@ export default function LoginPage() {
           <PasswordInput
             label="Contraseña"
             placeholder="Tu contraseña"
-            required
+            error={errors.password ? 'Contraseña requerida' : ''}
             mt="md"
-            {...register('password')}
+            {...register('password', { required: true })}
           />
           <Group justify="space-between" mt="lg" className={classes.controls}>
             <Link href="/reset" passHref legacyBehavior>
@@ -165,23 +112,10 @@ export default function LoginPage() {
                 </Center>
               </Anchor>
             </Link>
-            <Button type="submit" loading={loading}>
+            <Button type="submit" loading={isSubmitting}>
               Inciar sesion
             </Button>
           </Group>
-        </form>
-        <Space h="md" />
-        <Divider label="O accede con un link en tu correo" labelPosition="center" />
-        <form onSubmit={handleSubmitOTP(onOTPSubmit)}>
-          <TextInput
-            {...registerOTP('email', { required: true })}
-            label="Tu email"
-            placeholder="email@ejemplo.com"
-            error={errorsOTP.email ? 'Campo requerido' : ''}
-          />
-          <Button loading={emailLoading} fullWidth mt="xl" type="submit">
-            Obtener link
-          </Button>
         </form>
       </Paper>
     </Container>

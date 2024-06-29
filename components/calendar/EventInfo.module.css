@@ -1,0 +1,23 @@
+.container {
+  /* whitespace: nowrap; */
+  border-inline-start: 3px solid gray;
+  border-start-end-radius: 0.25rem;
+  border-end-end-radius: 0.25rem;
+  /* writing-mode: vertical-lr; */
+  height: 100%;
+  padding-left: 5px;
+}
+
+.containerStripped {
+  border-inline-start: 3px solid gray;
+  border-start-end-radius: 0.25rem;
+  border-end-end-radius: 0.25rem;
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    #cccccc 0px,
+    #cccccc 10px,
+    #f0f0f0 10px,
+    #f0f0f0 20px
+  );
+}

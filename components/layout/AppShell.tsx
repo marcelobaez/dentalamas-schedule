@@ -1,7 +1,13 @@
 import { ReactNode } from 'react';
 import { AppShell, Group, useMantineColorScheme, NavLink, Burger, ActionIcon } from '@mantine/core';
 import Logo from './Logo';
-import { IconLogout, IconMoonStars, IconSun } from '@tabler/icons-react';
+import {
+  IconBuilding,
+  IconLogout,
+  IconMoonStars,
+  IconSettings,
+  IconSun,
+} from '@tabler/icons-react';
 import MainNavLinks from './MainNavLinks';
 import { User } from './User';
 import { useRouter } from 'next/router';
@@ -11,9 +17,11 @@ import { useProfile } from '../../hooks/useUser/useUser';
 import { LocationButton } from './LocationButton';
 import { useAtom } from 'jotai';
 import { menuAtom } from '../../atoms/menu';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { UserMenu } from './UserMenu';
 import PageTransition from './PageTransition';
+import DoctorIcon from '../assets/icons/DoctorIcon';
+import StethoscopeIcon from '../assets/icons/StethoscopeIcon';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -49,7 +57,7 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
               variant="transparent"
               className={classes.actionIcon}
             >
-              {colorScheme === 'dark' ? <IconSun size="1rem" /> : <IconMoonStars size="1rem" />}
+              {colorScheme === 'dark' ? <IconSun size="1.2rem" /> : <IconMoonStars size="1rem" />}
             </ActionIcon>
             {user && <UserMenu profile={user} />}
           </Group>
@@ -61,6 +69,30 @@ export default function AppShellLayout({ children }: AppLayoutProps) {
         </AppShell.Section>
         <AppShell.Section grow py="sm">
           <MainNavLinks />
+        </AppShell.Section>
+        <AppShell.Section>
+          <NavLink
+            leftSection={<IconSettings size="1rem" />}
+            label="Administracion"
+            href="#settings"
+            childrenOffset={28}
+          >
+            <NavLink
+              href="/locations"
+              label="Sucursales"
+              // leftSection={<IconBuilding size="1rem" />}
+            />
+            {/* <NavLink
+              href="/specialists"
+              label="Profesionales"
+              // leftSection={<DoctorIcon width="1rem" height="1rem" />}
+            /> */}
+            <NavLink
+              href="/treatments"
+              label="Tratamientos"
+              // leftSection={<StethoscopeIcon width="1rem" height="1rem" />}
+            />
+          </NavLink>
         </AppShell.Section>
         <AppShell.Section className={classes.footer}>
           {user && <User profile={user} />}

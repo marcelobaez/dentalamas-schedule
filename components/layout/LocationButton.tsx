@@ -1,6 +1,6 @@
 import { UnstyledButton, Group, Avatar, Text, rem, Box } from '@mantine/core';
 import classes from './User.module.css';
-import { IconBuilding } from '@tabler/icons-react';
+import { IconBuilding, IconChevronRight } from '@tabler/icons-react';
 
 export function LocationButton() {
   return (
@@ -25,7 +25,7 @@ export function LocationButton() {
             </Text>
           </div>
 
-          {/* <IconChevronRight style={{ width: rem(14), height: rem(14) }} stroke={1.5} /> */}
+          <IconChevronRight style={{ width: rem(14), height: rem(14) }} stroke={1.5} />
         </Group>
       </UnstyledButton>
     </Box>

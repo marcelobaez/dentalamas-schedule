@@ -1,5 +1,5 @@
 import { Avatar, Button, Drawer, Group, Stack, Text, Tooltip, rem } from '@mantine/core';
-import useSpecialists from '../hooks/useSpecialists/useSpecialists';
+import useSpecialists from '../../hooks/useSpecialists/useSpecialists';
 import Head from 'next/head';
 import { GetServerSidePropsContext } from 'next';
 import { IconUserPlus } from '@tabler/icons-react';
@@ -11,13 +11,11 @@ import {
   MantineReactTable,
   useMantineReactTable,
 } from 'mantine-react-table';
-import { createClient } from '../utils/supabase/server-props';
-import { getMantineStyleAndOpts } from '../utils';
-import StethoscopeIcon from '../components/assets/icons/StethoscopeIcon';
-import { useDisclosure } from '@mantine/hooks';
-import { SpecialistCreateForm } from '../components/forms/SpecialistCreateForm';
-import { Tables } from '../types/supabase';
-import { SpecialistEditForm } from '../components/forms/SpecialistEditForm';
+import { createClient } from '../../utils/supabase/server-props';
+import { getMantineStyleAndOpts } from '../../utils';
+import { ExtendedSpecialist } from '../../components/forms/SpecialistEditDrawer';
+import DoctorIcon from '../../components/assets/icons/DoctorIcon';
+import { useRouter } from 'next/router';
 
 type StringDays = 'L' | 'M' | 'X' | 'J' | 'V' | 'S' | 'D';
 
@@ -37,13 +35,6 @@ type WorkDay = {
   end_time: string;
 };
 
-type ExtendedSpecialist = Tables<'specialists'> & {
-  specialist_working_days: Tables<'specialist_working_days'>[];
-  treatments: Tables<'treatments'>[];
-  specialist_treatments: Tables<'specialist_treatments'>[];
-  locations: Tables<'locations'>[];
-};
-
 const getColorByDay = (day: StringDays, workDays: WorkDay[]) => {
   const numberDay = laborDays[day];
   const workDay = workDays.find((item) => item.day_of_week === numberDay);
@@ -60,15 +51,7 @@ const getRangeLabelByDay = (day: StringDays, workDays: WorkDay[]) => {
 };
 
 export default function Specialists() {
-  const [createFormOpened, createFormHandlers] = useDisclosure(false);
-  const [editFormOpened, editFormHandlers] = useDisclosure(false);
-  const [selectedStaff, setStaff] = useState<
-    Tables<'specialists'> & {
-      specialist_working_days: Tables<'specialist_working_days'>[];
-      treatments: Tables<'treatments'>[];
-      specialist_treatments: Tables<'specialist_treatments'>[];
-    }
-  >();
+  const router = useRouter();
   const columns = useMemo<MRT_ColumnDef<ExtendedSpecialist>[]>(
     () => [
       {
@@ -120,7 +103,6 @@ export default function Specialists() {
                 >
                   <Avatar
                     color={getColorByDay(day as StringDays, row.original.specialist_working_days)}
-                    // key={day}
                     radius="xl"
                     size="sm"
                     variant="filled"
@@ -189,7 +171,7 @@ export default function Specialists() {
     renderTopToolbarCustomActions: () => (
       <Group align="center" gap="xs">
         <Avatar color="violet" radius="md">
-          <StethoscopeIcon width="1.3rem" height="1.3rem" />
+          <DoctorIcon width="1.3rem" height="1.3rem" />
         </Avatar>
         <Text fz="1.2rem" fw={600}>
           {totalRowCount}
@@ -201,8 +183,7 @@ export default function Specialists() {
     ),
     mantineTableBodyRowProps: ({ row }) => ({
       onClick: (event) => {
-        setStaff(row.original);
-        editFormHandlers.open();
+        router.push(`/specialists/details/${row.original.id}`);
       },
       sx: {
         cursor: 'pointer',
@@ -231,40 +212,12 @@ export default function Specialists() {
           </Text>
           <Button
             leftSection={<IconUserPlus size={16} />}
-            onClick={() => createFormHandlers.open()}
+            onClick={() => router.push('/specialists/new')}
           >
             Nuevo profesional
           </Button>
         </Group>
         <MantineReactTable table={table} />
-        {/* Create staff Drawer */}
-        <Drawer
-          offset={8}
-          size={rem(570)}
-          position="right"
-          radius="md"
-          opened={createFormOpened}
-          onClose={createFormHandlers.close}
-          title="Nuevo profesional"
-          closeOnClickOutside={false}
-        >
-          <SpecialistCreateForm />
-        </Drawer>
-        {/* Edit staff Drawer */}
-        <Drawer
-          offset={8}
-          size={rem(570)}
-          position="right"
-          radius="md"
-          opened={editFormOpened}
-          onClose={editFormHandlers.close}
-          title={`Editar info: ${
-            selectedStaff ? selectedStaff.firstName + ' ' + selectedStaff.lastName : ''
-          }`}
-          closeOnClickOutside={false}
-        >
-          {selectedStaff && <SpecialistEditForm data={selectedStaff} />}
-        </Drawer>
       </Stack>
     </>
   );

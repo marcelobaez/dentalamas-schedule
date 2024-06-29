@@ -19,7 +19,6 @@
 }
 
 .label {
-  font-family: var(--mantine-font-family-monospace);
   font-weight: bold;
   font-size: var(--mantine-font-size-md);
   line-height: 1.3;

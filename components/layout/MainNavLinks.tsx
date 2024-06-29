@@ -5,6 +5,7 @@ import { IconCalendarEvent, IconClock2, IconHome2, IconUsers } from '@tabler/ico
 import { useAtom } from 'jotai';
 import { menuAtom } from '../../atoms/menu';
 import StethoscopeIcon from '../assets/icons/StethoscopeIcon';
+import DoctorIcon from '../assets/icons/DoctorIcon';
 
 export default function MainNavLinks() {
   const router = useRouter();
@@ -18,22 +19,27 @@ export default function MainNavLinks() {
     {
       link: '/specialists',
       label: 'Profesionales',
-      icon: <StethoscopeIcon width="1rem" height="1rem" />,
+      icon: <DoctorIcon width="1rem" height="1rem" />,
     },
+    // {
+    //   link: '/treatments',
+    //   label: 'Tratamientos',
+    //   icon: <StethoscopeIcon width="1rem" height="1rem" />,
+    // },
   ];
 
   return (
     <>
       {links.map((item, idx) => (
-        <Link key={`nav-link-${idx}`} href={item.link} passHref legacyBehavior>
-          <NavLink
-            component="a"
-            onClick={() => setOpened(false)}
-            leftSection={item.icon}
-            label={item.label}
-            active={router.pathname === item.link}
-          />
-        </Link>
+        <NavLink
+          key={`nav-link-${idx}`}
+          component={Link}
+          href={item.link}
+          onClick={() => setOpened(false)}
+          leftSection={item.icon}
+          label={item.label}
+          active={router.pathname === item.link}
+        />
       ))}
     </>
   );

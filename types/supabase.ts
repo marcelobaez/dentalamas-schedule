@@ -125,6 +125,79 @@ export type Database = {
         }
         Relationships: []
       }
+      breaks: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: number
+          recurring: boolean | null
+          specialist_id: number
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: number
+          recurring?: boolean | null
+          specialist_id: number
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: number
+          recurring?: boolean | null
+          specialist_id?: number
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "breaks_specialist_id_fkey"
+            columns: ["specialist_id"]
+            isOneToOne: false
+            referencedRelation: "specialists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_working_hours: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: number
+          location_id: number
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: number
+          location_id: number
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: number
+          location_id?: number
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_working_hours_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           City: string | null
@@ -151,6 +224,47 @@ export type Database = {
           zipCode?: number | null
         }
         Relationships: []
+      }
+      non_working_days: {
+        Row: {
+          created_at: string
+          enabled: boolean | null
+          from_date: string
+          id: number
+          reason: string
+          recurring: boolean | null
+          specialist_id: number
+          to_date: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean | null
+          from_date: string
+          id?: number
+          reason: string
+          recurring?: boolean | null
+          specialist_id: number
+          to_date: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean | null
+          from_date?: string
+          id?: number
+          reason?: string
+          recurring?: boolean | null
+          specialist_id?: number
+          to_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "non_working_days_specialist_id_fkey"
+            columns: ["specialist_id"]
+            isOneToOne: false
+            referencedRelation: "specialists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patients: {
         Row: {
@@ -239,6 +353,47 @@ export type Database = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      specialist_blocks: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          endDate: string
+          id: number
+          notes: string | null
+          specialist_id: number
+          startDate: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          endDate: string
+          id?: number
+          notes?: string | null
+          specialist_id: number
+          startDate: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          endDate?: string
+          id?: number
+          notes?: string | null
+          specialist_id?: number
+          startDate?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_specialist_id_fkey"
+            columns: ["specialist_id"]
+            isOneToOne: false
+            referencedRelation: "specialists"
             referencedColumns: ["id"]
           },
         ]
@@ -383,23 +538,58 @@ export type Database = {
         }
         Relationships: []
       }
+      treatment_visit_types: {
+        Row: {
+          created_at: string
+          id: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          type?: string
+        }
+        Relationships: []
+      }
       treatments: {
         Row: {
           created_at: string | null
+          est_duration: number | null
+          est_price: number | null
           id: number
           name: string
+          visit_type: number | null
         }
         Insert: {
           created_at?: string | null
+          est_duration?: number | null
+          est_price?: number | null
           id?: number
           name: string
+          visit_type?: number | null
         }
         Update: {
           created_at?: string | null
+          est_duration?: number | null
+          est_price?: number | null
           id?: number
           name?: string
+          visit_type?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "treatments_visit_type_fkey"
+            columns: ["visit_type"]
+            isOneToOne: false
+            referencedRelation: "treatment_visit_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

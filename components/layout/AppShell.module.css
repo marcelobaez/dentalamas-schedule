@@ -9,8 +9,8 @@
 }
 
 .footer {
-  padding-top: var(--mantine-spacing-md);
-  margin-top: var(--mantine-spacing-md);
+  /* padding-top: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-md); */
 
   @mixin light {
     border-top: 1px solid var(--mantine-color-gray-2);
@@ -24,16 +24,16 @@
 .actionIcon {
   max-width: 30px;
   color: var(--mantine-color-gray-6);
-  background-color: var(--mantine-color-gray-0);
+  /* background-color: var(--mantine-color-gray-0); */
 
   @mixin light {
     color: var(--mantine-color-gray-6);
-    background-color: var(--mantine-color-gray-0);
+    /* background-color: var(--mantine-color-gray-0); */
   }
 
   @mixin dark {
     color: var(--mantine-color-yellow-4);
-    background-color: var(--mantine-color-dark-6);
+    /* background-color: var(--mantine-color-dark-6); */
   }
 }
 

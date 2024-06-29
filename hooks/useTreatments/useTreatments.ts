@@ -6,13 +6,17 @@ export default function useTreatments() {
   return useQuery({
     queryKey: ['treatments'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('treatments').select('id, name');
+      const { data, count, error } = await supabase
+        .from('treatments')
+        .select('*, treatment_visit_types (*)', {
+          count: 'exact',
+        });
 
       if (error) {
         throw new Error(`${error.message}: ${error.details}`);
       }
 
-      return data;
+      return { data, count };
     },
   });
 }
