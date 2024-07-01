@@ -30,13 +30,14 @@ import { GetServerSidePropsContext } from 'next';
 import { AppointmentStates } from '../types/appointmentState';
 import { IconClock2, IconForbid, IconUser } from '@tabler/icons-react';
 import { createClient } from '../utils/supabase/server-props';
+import React from 'react';
+import { getAvatarFromFullName } from '../utils/getAvatarName';
 
 export default function Dashboard() {
-  const { data: dashboardData, isLoading: isLoadingDashboard } = useDashboard();
+  const { data: dashboardData, status } = useDashboard();
   const { data: appointmentsData, isLoading: isLoadingAppointments } = useAppointments({
     fromDate: dayjs().startOf('day').format(),
     toDate: dayjs().endOf('day').format(),
-    top: 5,
   });
 
   return (
@@ -59,32 +60,29 @@ export default function Dashboard() {
         <Grid.Col span={{ xl: 4, md: 6, xs: 12 }}>
           <StatWidget
             title="Pacientes atendidos"
-            value={dashboardData?.data.attended.count}
-            // Icon={icons['user']}
+            value={dashboardData?.data.totalAttended}
             Icon={() => <IconUser />}
             color="grape.4"
-            isLoading={isLoadingDashboard}
+            isLoading={status === 'pending'}
           />
         </Grid.Col>
         <Grid.Col span={{ xl: 4, md: 6, xs: 12 }}>
           <StatWidget
             title="Turnos aprobados"
-            value={dashboardData?.data.approved.count}
+            value={dashboardData?.data.totalApproved}
             diff={10}
-            // Icon={icons['appointment']}
             Icon={() => <IconClock2 />}
             color="blue.4"
-            isLoading={isLoadingDashboard}
+            isLoading={status === 'pending'}
           />
         </Grid.Col>
         <Grid.Col span={{ xl: 4, md: 6, xs: 12 }}>
           <StatWidget
             title="Turnos cancelados"
-            value={dashboardData?.data.cancelled.count}
-            // Icon={icons['cancelled']}
+            value={dashboardData?.data.totalCancelled}
             Icon={() => <IconForbid />}
             color="red.4"
-            isLoading={isLoadingDashboard}
+            isLoading={status === 'pending'}
           />
         </Grid.Col>
         <Grid.Col span={{ xl: 8, xs: 12 }}>
@@ -102,7 +100,7 @@ export default function Dashboard() {
                     <Table.Tr>
                       <Table.Th>Hora</Table.Th>
                       <Table.Th>Paciente</Table.Th>
-                      <Table.Th>Doctor/a</Table.Th>
+                      <Table.Th>Profesional</Table.Th>
                       <Table.Th>Estado</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
@@ -169,7 +167,7 @@ export default function Dashboard() {
         <Grid.Col span={{ xl: 4, xs: 12 }}>
           <Paper p="md" radius="md" shadow="md">
             <Title order={4} pb="md">
-              Carga de trabajo
+              Carga por profesional
             </Title>
             {isLoadingAppointments && (
               <Center style={{ height: '287px', position: 'relative' }}>
@@ -178,44 +176,30 @@ export default function Dashboard() {
             )}
             {!isLoadingAppointments && dashboardData && (
               <Grid align="center">
-                <Grid.Col span={{ sm: 12, lg: 6 }}>
-                  <Group gap="sm">
-                    <Avatar color="cyan" size={26} radius={26}>
-                      NT
-                    </Avatar>
-                    <Text size="sm" fw={500}>
-                      {dashboardData.data.workload.doctorOne.name}
-                    </Text>
-                  </Group>
-                </Grid.Col>
-                <Grid.Col span={{ sm: 12, lg: 6 }}>
-                  <Progress.Root size="xl" radius="xl">
-                    <Progress.Section value={dashboardData?.data.workload.doctorOne.value}>
-                      <Progress.Label>{`${new Intl.NumberFormat('es-AR', {
-                        maximumFractionDigits: 0,
-                      }).format(dashboardData.data.workload.doctorOne.value)}%`}</Progress.Label>
-                    </Progress.Section>
-                  </Progress.Root>
-                </Grid.Col>
-                <Grid.Col span={{ sm: 12, lg: 6 }}>
-                  <Group gap="sm">
-                    <Avatar color="gray" size={26} radius={26}>
-                      CV
-                    </Avatar>
-                    <Text size="sm" fw={500}>
-                      {dashboardData.data.workload.doctorTwo.name}
-                    </Text>
-                  </Group>
-                </Grid.Col>
-                <Grid.Col span={{ sm: 12, lg: 6 }}>
-                  <Progress.Root size="xl" radius="xl">
-                    <Progress.Section value={dashboardData?.data.workload.doctorTwo.value}>
-                      <Progress.Label>{`${new Intl.NumberFormat('es-AR', {
-                        maximumFractionDigits: 0,
-                      }).format(dashboardData.data.workload.doctorTwo.value)}%`}</Progress.Label>
-                    </Progress.Section>
-                  </Progress.Root>
-                </Grid.Col>
+                {dashboardData &&
+                  dashboardData.data.workload.map((wl, idx) => (
+                    <React.Fragment key={`col-name-sp-${idx}`}>
+                      <Grid.Col span={{ sm: 12, lg: 6 }}>
+                        <Group gap="sm">
+                          <Avatar color="darkPurple" size={26} radius={26}>
+                            {getAvatarFromFullName(wl.specialistName)}
+                          </Avatar>
+                          <Text size="sm" fw={500}>
+                            {wl.specialistName}
+                          </Text>
+                        </Group>
+                      </Grid.Col>
+                      <Grid.Col span={{ sm: 12, lg: 6 }}>
+                        <Progress.Root size="xl" radius="xl">
+                          <Progress.Section value={wl.loadPercentage}>
+                            <Progress.Label>{`${new Intl.NumberFormat('es-AR', {
+                              maximumFractionDigits: 0,
+                            }).format(wl.loadPercentage)}%`}</Progress.Label>
+                          </Progress.Section>
+                        </Progress.Root>
+                      </Grid.Col>
+                    </React.Fragment>
+                  ))}
               </Grid>
             )}
           </Paper>

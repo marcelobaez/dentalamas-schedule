@@ -149,8 +149,6 @@ export default function Calendar() {
     ? specialistsData.data.filter((sp) => sp.id.toString() === selectedSp)
     : specialistsData.data;
 
-  console.log(filteredSpecialists, data.data);
-
   const serverEvents = generateEventData(data.data, filteredSpecialists, dateRange, theme);
 
   return (
