@@ -13,7 +13,7 @@ import {
 } from 'mantine-react-table';
 import { createClient } from '../../utils/supabase/server-props';
 import { getMantineStyleAndOpts } from '../../utils';
-import { ExtendedSpecialist } from '../../components/forms/SpecialistEditDrawer';
+import { ExtendedSpecialist } from '../../components/forms/SpecialistEditForm';
 import DoctorIcon from '../../components/assets/icons/DoctorIcon';
 import { useRouter } from 'next/router';
 

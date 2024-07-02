@@ -155,7 +155,7 @@ export default function AppointmentsEditDrawer({ data, onClose }: ModalProps) {
       });
       return hasErrors;
     } else {
-      return false;
+      return true;
     }
   };
 

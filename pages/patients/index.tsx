@@ -1,10 +1,10 @@
 import { Button, Grid, Group, Text, Title } from '@mantine/core';
 import Head from 'next/head';
 import { openContextModal } from '@mantine/modals';
-import { PatientsTable } from '../components/features/PatientsTable/PatientsTable';
+import { PatientsTable } from '../../components/features/PatientsTable/PatientsTable';
 import { GetServerSidePropsContext } from 'next';
 import { IconUserPlus } from '@tabler/icons-react';
-import { createClient } from '../utils/supabase/server-props';
+import { createClient } from '../../utils/supabase/server-props';
 
 export default function Patients() {
   const openCreateModal = () => {

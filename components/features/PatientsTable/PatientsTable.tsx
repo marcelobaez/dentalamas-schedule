@@ -18,6 +18,7 @@ import {
 import dayjs from 'dayjs';
 import { DATE_FORMAT_WITH_TIME } from '../../../utils/constants';
 import { getMantineStyleAndOpts } from '../../../utils';
+import router from 'next/router';
 
 export function PatientsTable() {
   const modals = useModals();
@@ -87,7 +88,7 @@ export function PatientsTable() {
   ]);
   const [pagination, setPagination] = useState<MRT_PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 15,
   });
 
   const { data, isLoading, isError, isFetching } = usePatients({
@@ -139,7 +140,7 @@ export function PatientsTable() {
     ),
     mantineTableBodyRowProps: ({ row }) => ({
       onClick: (event) => {
-        openEditPatientModal(row.original);
+        router.push(`/patients/details/${row.original.id}`);
       },
       sx: {
         cursor: 'pointer',

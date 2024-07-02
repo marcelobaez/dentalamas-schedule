@@ -1,15 +1,5 @@
-import {
-  Avatar,
-  Button,
-  Drawer,
-  Grid,
-  Group,
-  LoadingOverlay,
-  Select,
-  Text,
-  rem,
-} from '@mantine/core';
-import { IconCalendar, IconPlus, IconClock2 } from '@tabler/icons-react';
+import { Avatar, Button, Drawer, Group, LoadingOverlay, Select, Text, rem } from '@mantine/core';
+import { IconCalendar, IconClock2 } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useIsMobile } from '../../../hooks/useIsMobile/useIsMobile';
 import { AppointmentsResponse } from '../../../types/appointment';
@@ -27,11 +17,9 @@ import { DatePickerInput } from '@mantine/dates';
 import useTreatments from '../../../hooks/useTreatments/useTreatments';
 import useSpecialists from '../../../hooks/useSpecialists/useSpecialists';
 import { getMantineStyleAndOpts } from '../../../utils';
-import { AppointmentCreateDrawer } from '../AppointmentCreateDrawer/AppointmentCreateDrawer';
 import { useDisclosure } from '@mantine/hooks';
 
 export default function AppointmentsTable() {
-  const [createOpened, { open, close }] = useDisclosure(false);
   const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
   const [selectedAppointment, setSelectedAp] = useState<AppointmentsResponse>();
   const isMobile = useIsMobile();
@@ -106,6 +94,10 @@ export default function AppointmentsTable() {
         cursor: 'pointer',
       },
     }),
+    mantinePaperProps: {
+      withBorder: false,
+      shadow: 'none',
+    },
     state: {
       density: 'xs',
       isLoading,
@@ -126,68 +118,64 @@ export default function AppointmentsTable() {
 
   return (
     <>
-      <Grid.Col span={12}>
-        <Group justify="space-between">
-          <Text fw={600} size={'xl'}>
-            Turnos
-          </Text>
-          <Group justify="end">
-            <DatePickerInput
-              leftSection={<IconCalendar size={16} />}
-              placeholder="Elija el rango de fechas"
-              type="range"
-              value={dateRangeValue}
-              onChange={setRangeValue}
-              locale="es"
-              allowSingleDateInRange={true}
-              w={{ base: '100%', sm: 'auto' }}
-            />
-            <Select
-              value={seletedSp}
-              onChange={setSelectedSp}
-              data={[
-                {
-                  label: 'Todos los especialistas',
-                  value: '',
-                },
-                ...(specialistsData.data
-                  ? specialistsData.data.map((item) => ({
-                      label: `${item.firstName} ${item.lastName}`,
-                      value: String(item.id),
-                    }))
-                  : []),
-              ]}
-              w={{ base: '100%', sm: 'auto' }}
-            />
-            <Select
-              value={seletedTr}
-              onChange={setSelectedTr}
-              data={[
-                {
-                  label: 'Todos los tipos',
-                  value: '',
-                },
-                ...treatmentsData.data.map((item) => ({
-                  label: item.name,
-                  value: String(item.id),
-                })),
-              ]}
-              w={{ base: '100%', sm: 'auto' }}
-            />
-            <Button
-              leftSection={<IconPlus />}
-              onClick={() => open()}
-              w={{ base: '100%', sm: 'auto' }}
-            >
-              Nuevo turno
-            </Button>
-          </Group>
+      <Group pt="md" justify="space-between">
+        {/* <Text fw={600} size={'xl'}>
+          Turnos
+        </Text> */}
+        <Group justify="end">
+          <DatePickerInput
+            leftSection={<IconCalendar size={16} />}
+            placeholder="Elija el rango de fechas"
+            type="range"
+            value={dateRangeValue}
+            onChange={setRangeValue}
+            locale="es"
+            allowSingleDateInRange={true}
+            w={{ base: '100%', sm: 'auto' }}
+          />
+          <Select
+            value={seletedSp}
+            onChange={setSelectedSp}
+            data={[
+              {
+                label: 'Todos los especialistas',
+                value: '',
+              },
+              ...(specialistsData.data
+                ? specialistsData.data.map((item) => ({
+                    label: `${item.firstName} ${item.lastName}`,
+                    value: String(item.id),
+                  }))
+                : []),
+            ]}
+            w={{ base: '100%', sm: 'auto' }}
+          />
+          <Select
+            value={seletedTr}
+            onChange={setSelectedTr}
+            data={[
+              {
+                label: 'Todos los tipos',
+                value: '',
+              },
+              ...treatmentsData.data.map((item) => ({
+                label: item.name,
+                value: String(item.id),
+              })),
+            ]}
+            w={{ base: '100%', sm: 'auto' }}
+          />
+          {/* <Button
+            leftSection={<IconPlus />}
+            onClick={() => open()}
+            w={{ base: '100%', sm: 'auto' }}
+          >
+            Nuevo turno
+          </Button> */}
         </Group>
-      </Grid.Col>
-      <Grid.Col span={12}>
-        <MantineReactTable table={table} />
-      </Grid.Col>
-      <Drawer
+      </Group>
+      <MantineReactTable table={table} />
+      {/* <Drawer
         opened={createOpened}
         onClose={close}
         position="right"
@@ -197,7 +185,7 @@ export default function AppointmentsTable() {
         title="Nuevo turno"
       >
         <AppointmentCreateDrawer onClose={close} />
-      </Drawer>
+      </Drawer> */}
       <Drawer
         opened={editOpened}
         onClose={closeEdit}

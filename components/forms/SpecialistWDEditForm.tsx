@@ -16,7 +16,7 @@ import {
 import { TimeInput } from '@mantine/dates';
 import React, { useCallback } from 'react';
 import { AutoHideSuccess } from './common/AutoHideSuccess';
-import { ExtendedSpecialist, SpecialistFormValues } from './SpecialistEditDrawer';
+import { ExtendedSpecialist, SpecialistFormValues } from './SpecialistEditForm';
 import { SubmitHandler, useFieldArray, useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToggleByTime } from '../../hooks/useToggleByTime/useToggleByTime';

@@ -1,7 +1,7 @@
 import { Box, Stack, Title, Text, Checkbox, Group, Button, LoadingOverlay } from '@mantine/core';
 import { AutoHideSuccess } from './common/AutoHideSuccess';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExtendedSpecialist, SpecialistFormValues } from './SpecialistEditDrawer';
+import { ExtendedSpecialist, SpecialistFormValues } from './SpecialistEditForm';
 import useSupabaseBrowser from '../../utils/supabase/component';
 import { useToggleByTime } from '../../hooks/useToggleByTime/useToggleByTime';
 import { SubmitHandler, useFieldArray, useForm } from 'react-hook-form';

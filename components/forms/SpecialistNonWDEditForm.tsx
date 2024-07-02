@@ -1,6 +1,6 @@
 import { Button, Group, Stack, ThemeIcon, Text, Checkbox } from '@mantine/core';
 import { IconCalendarEvent, IconPlus } from '@tabler/icons-react';
-import { ExtendedSpecialist } from './SpecialistEditDrawer';
+import { ExtendedSpecialist } from './SpecialistEditForm';
 import { Tables } from '../../types/supabase';
 import { DATE_FORMAT_WITH_TIME } from '../../utils/constants';
 import dayjs from 'dayjs';

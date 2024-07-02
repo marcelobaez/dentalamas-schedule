@@ -3,7 +3,7 @@ import { AutoHideSuccess } from './common/AutoHideSuccess';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToggleByTime } from '../../hooks/useToggleByTime/useToggleByTime';
 import useSupabaseBrowser from '../../utils/supabase/component';
-import { ExtendedSpecialist, SpecialistFormValues } from './SpecialistEditDrawer';
+import { ExtendedSpecialist, SpecialistFormValues } from './SpecialistEditForm';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { IconBuilding, IconMail, IconPhone } from '@tabler/icons-react';
 import { useEffect } from 'react';

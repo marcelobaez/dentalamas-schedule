@@ -198,7 +198,9 @@ export function AppointmentCreateDrawer({
 
   const validateAppointmentTimes = () => {
     const errorMessage = 'Horario no disponible';
+    console.log('selectedSpecialist', selectedSpecialist, specialistsData);
     if (selectedSpecialist && specialistsData) {
+      let hasErrors = false;
       const targetFromDate = dayjs(selectedStartDate).add(1, 'second').toDate();
       const targetToDate = dayjs(selectedEndDate).add(-1, 'second').toDate();
       const specialist = specialistsData.data.find(
@@ -224,6 +226,7 @@ export function AppointmentCreateDrawer({
         'stepOne.endDate',
         blocks,
         (fields) => {
+          hasErrors = true;
           fields.forEach((field) => {
             const key = field as keyof FormValues;
             setError(key, { type: 'validate', message: errorMessage });
@@ -238,21 +241,27 @@ export function AppointmentCreateDrawer({
         'stepOne.endDate',
         breaks,
         (fields) => {
+          hasErrors = true;
           fields.forEach((field) => {
             const key = field as keyof FormValues;
             setError(key, { type: 'validate', message: errorMessage });
           });
         },
       );
+
+      return hasErrors;
+    } else {
+      return true;
     }
   };
 
   const nextStep = async () => {
     let hasErrors = true;
-    validateAppointmentTimes();
     switch (active) {
       case 0:
-        hasErrors = !!errors.stepOne || !(await trigger('stepOne'));
+        const hasBaseErrors = !(await trigger('stepOne'));
+        const hasRangeErrors = validateAppointmentTimes();
+        hasErrors = hasBaseErrors || hasRangeErrors;
         break;
       case 1:
         hasErrors = !(await trigger('stepTwo'));

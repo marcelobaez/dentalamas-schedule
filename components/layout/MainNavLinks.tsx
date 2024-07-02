@@ -13,8 +13,8 @@ export default function MainNavLinks() {
 
   const links = [
     { link: '/dashboard', label: 'Inicio', icon: <IconHome2 size="1rem" /> },
-    { link: '/calendar', label: 'Calendario', icon: <IconCalendarEvent size="1rem" /> },
-    { link: '/appointments', label: 'Turnos', icon: <IconClock2 size="1rem" /> },
+    { link: '/agenda', label: 'Agenda', icon: <IconCalendarEvent size="1rem" /> },
+    // { link: '/appointments', label: 'Turnos', icon: <IconClock2 size="1rem" /> },
     { link: '/patients', label: 'Pacientes', icon: <IconUsers size="1rem" /> },
     {
       link: '/specialists',

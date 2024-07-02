@@ -4,6 +4,7 @@ import { SpecialistEditForm } from '../../../components/forms/SpecialistEditForm
 import { useRouter } from 'next/router';
 import { GetServerSidePropsContext } from 'next';
 import { z } from 'zod';
+import { PatientEditForm } from '../../../components/forms/PatientEditForm';
 
 // Define a schema for the query parameter
 const queryParamSchema = z
@@ -28,7 +29,7 @@ const parseQueryParam = (param: string | string[] | undefined) => {
   return result.data;
 };
 
-export default function SpecialistDetails() {
+export default function PatientDetails() {
   const {
     query: { id },
   } = useRouter();
@@ -39,7 +40,7 @@ export default function SpecialistDetails() {
 
   return (
     <Paper p="md" shadow="sm" radius="sm">
-      <SpecialistEditForm id={parsed} />
+      <PatientEditForm id={parsed} />
     </Paper>
   );
 }
